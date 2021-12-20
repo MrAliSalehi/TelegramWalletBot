@@ -33,10 +33,17 @@ public static class Dependencies
         Swiss,
     }
 
+    public static List<string> LanguagesList => Enum.GetNames(typeof(Dependencies.Languages)).ToList();
+
     public static Dictionary<Languages, Dictionary<string, string>> LangDictionary = new()
     {
 
-        { Languages.English, new Dictionary<string, string>() { { "Welcome", "Welcome" }, { "Enter Your Name:", "Enter Your Name:" } } },
+        { Languages.English, new Dictionary<string, string>()
+        {
+            { "Login", "Login" }, 
+            { "Register", "Register" }
+        } },
+
         { Languages.Spanish ,new Dictionary<string, string>() { {"Welcome", "Bienvenidos"},{"Enter Your Name:", "Introduzca su nombre:" } }}
     };
 
