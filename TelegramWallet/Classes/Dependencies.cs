@@ -47,4 +47,6 @@ public static class Dependencies
         { Languages.Spanish ,new Dictionary<string, string>() { {"Welcome", "Bienvenidos"},{"Enter Your Name:", "Introduzca su nombre:" } }}
     };
 
+    public static string ConnectionString => @"Server=.\SQL2019;Database=TelegramWallet_Db;Integrated Security=True;Connect Timeout=30;User ID=bot;Password=jokerr123";
+
 }
