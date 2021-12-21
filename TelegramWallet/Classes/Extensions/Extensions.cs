@@ -16,6 +16,7 @@ public static class Extensions
     }
 
     public static List<string> AdminsNamesToList(this List<Admin> admins) => admins.Select(admin => admin.UserId).ToList(); 
+    public static List<string> ChannelNamesToList(this List<ForceJoinChannel> channels) => channels.Select(channel => channel.ChId).ToList(); 
     public static string EscapeUnSupportChars(this string mainString) => mainString.Replace(".", @"\.");
     public static string ReplacePaymentName(this string paymentName) => paymentName switch
     {

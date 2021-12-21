@@ -105,10 +105,19 @@ public class Bot
             InlineKeyboardButton.WithCallbackData("Exit","Admin:Exit"),
         }
     });
-    private static readonly InlineKeyboardMarkup AdminCommandsMarkUp = new(new[] { new [] { InlineKeyboardButton.WithCallbackData("Create Admin","Admin:AdminCommands:Create"), InlineKeyboardButton.WithCallbackData("Remove Admin","Admin:AdminCommands:Remove"), },
+    private static readonly InlineKeyboardMarkup AdminCommandsMarkUp = new(new[] {
+        new []
+        { InlineKeyboardButton.WithCallbackData("Create Admin","Admin:AdminCommands:Create"),
+            InlineKeyboardButton.WithCallbackData("Remove Admin","Admin:AdminCommands:Remove"), },
         new [] { InlineKeyboardButton.WithCallbackData("Admin List","Admin:AdminCommands:List"), },
         new [] { InlineKeyboardButton.WithCallbackData("Back","Admin:AdminCommands:Back:Main"), } });
 
+    private static readonly InlineKeyboardMarkup ChannelCommandsMarkUp = new(new[] {
+        new []
+        { InlineKeyboardButton.WithCallbackData("Add Channel","Admin:ChannelCommands:Add"),
+            InlineKeyboardButton.WithCallbackData("Remove Channel","Admin:ChannelCommands:Remove"), },
+        new [] { InlineKeyboardButton.WithCallbackData("Channel List", "Admin:ChannelCommands:List"), },
+        new [] { InlineKeyboardButton.WithCallbackData("Back", "Admin:AdminCommands:Back:Main"), } });
     #endregion
 
     #endregion
@@ -128,7 +137,7 @@ public class Bot
                     var notJoinedChannels = "";
                     checkJoinCallBackSide.ForEach(p =>
                     {
-                        notJoinedChannels += $"{p.ChName} : @{p.ChId}\n";
+                        notJoinedChannels += $"@{p.ChId}\n";
                     });
                     await bot.SendTextMessageAsync(e.CallbackQuery.From.Id, $"Dear {e.CallbackQuery.From.Id}, You Did`nt Join In This Channel(s): \n {notJoinedChannels}\n To Use This Bot, Please First Join This Channel(s)", cancellationToken: ct);
                 }
@@ -144,7 +153,7 @@ public class Bot
                     var notJoinedChannels = "";
                     checkJoinMessageSide.ForEach(p =>
                     {
-                        notJoinedChannels += $"{p.ChName} : @{p.ChId}\n";
+                        notJoinedChannels += $"@{p.ChId}\n";
                     });
                     await bot.SendTextMessageAsync(e.Message.From.Id, $"Dear {e.Message.From.Id}, You Did`nt Join In This Channel(s): \n {notJoinedChannels}\n To Use This Bot, Please First Join This Channel(s)", cancellationToken: ct);
                 }
@@ -573,8 +582,10 @@ public class Bot
         #endregion
 
         #region Main-Owner
+        //e.Chat.Id is 1127927726 or 1222521875
 
-        if (e.Chat.Id is 1127927726 or 1222521875)
+        var getAllAdmins = await _adminController.GetAllAdminsAsync();
+        if (getAllAdmins.Any(p => p.UserId == e.From.Id.ToString()))
         {
             await OwnerAsync(bot, e, ct);
             var getAdmin = await _adminController.GetAdminAsync(e.From.Id.ToString());
@@ -594,9 +605,23 @@ public class Bot
                         break;
                     #endregion
 
+                    #region Add Channel Id
+
+                    case 2:
+                        await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), CommandSteps = 0 });
+                        var addChannel = await _forceJoinController.AddChannelAsync(new ForceJoinChannel() { ChId = e.Text ?? "" });
+                        if (addChannel)
+                            await bot.SendTextMessageAsync(e.From.Id, "Channel Has Been Added SuccessFully", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
+                        else
+                            await bot.SendTextMessageAsync(e.From.Id, "Channel Is Already In The List!", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
+
+                        break;
+
+                        #endregion
                 }
             }
         }
+
 
         #endregion
 
@@ -653,15 +678,15 @@ public class Bot
         var add = 0;
         foreach (var button in buttons)
         {
-           
+
             if (add % 1 == 0)
             {
-                
+
                 keyBoard.Add(new List<InlineKeyboardButton>()
                 {
                     InlineKeyboardButton.WithCallbackData(button,needCallBack?$"Admin:AdminCommands:Remove:{button}":"-")
                 });
-                
+
             }
             keyBoard.Last().Add(InlineKeyboardButton.WithCallbackData(button, needCallBack ? $"Admin:AdminCommands:Remove:{button}" : "-"));
             add++;
@@ -707,7 +732,7 @@ public class Bot
                                     var idToRemove = splitData[3];
                                     var delete = await _adminController.DeleteOwnerAsync(new Admin() { UserId = idToRemove });
                                     if (delete)
-                                        await bot.EditMessageTextAsync(e.From.Id,e.Message.MessageId, $"User:[{idToRemove}] Has Been Deleted From Admin List!", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+                                        await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, $"User:[{idToRemove}] Has Been Deleted From Admin List!", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
                                     else
                                         await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, $"There Is A Problem During Deleting This Admin!\n He Might Be Already Removed !", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
 
@@ -768,16 +793,80 @@ public class Bot
                         }
                     }
                     else
-                    {
-
                         await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Admin Commands:", replyMarkup: AdminCommandsMarkUp, cancellationToken: ct);
-                    }
+
                     break;
 
                 #endregion
 
                 #region Channel Handlers
                 case "ChannelCommands":
+                    if (splitData.Length > 2)
+                    {
+                        switch (splitData[2])
+                        {
+                            #region Add
+                            case "Add":
+                                await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), CommandSteps = 2 });
+                                var cancelCreation = new InlineKeyboardMarkup(new[]
+                                    { InlineKeyboardButton.WithCallbackData("Cancel", "Admin:ChannelCommands:Back:ChannelCommandsClearStep"), });
+                                await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, "Send Channel Id Without (@):\n (E.x : telegramBot)", replyMarkup: cancelCreation, cancellationToken: ct);
+                                break;
+                            #endregion
+
+                            #region Remove
+                            case "Remove":
+                                if (splitData.Length > 3)
+                                {
+                                    var idToRemove = splitData[3];
+                                    var deleteChannel = await _forceJoinController.RemoveChannelAsync(new ForceJoinChannel() { ChId = idToRemove });
+                                    if (deleteChannel)
+                                        await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, $"User:[{idToRemove}] Has Been Deleted From Admin List!", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+                                    else
+                                        await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, $"There Is A Problem During Deleting This Admin!\n He Might Be Already Removed !", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+
+                                }
+                                else
+                                {
+                                    var getChannels = await _forceJoinController.GetChannelsAsync();
+                                    var key = CreateInlineButtonAdminList(getChannels.ChannelNamesToList());
+                                    key.Add(new List<InlineKeyboardButton>() { InlineKeyboardButton.WithCallbackData("Back", "Admin:ChannelCommands:Back:ChannelCommands") });
+                                    await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, "Here Is Your Channels List :\n Select One Of Them To Remove ",
+                                        replyMarkup: new InlineKeyboardMarkup(key), cancellationToken: ct);
+                                }
+                                break;
+                            #endregion
+
+                            #region List
+                            case "List":
+                                var getChannelsList = await _forceJoinController.GetChannelsAsync();
+                                var keyboard = CreateInlineButtonAdminList(getChannelsList.ChannelNamesToList(), false);
+                                keyboard.Add(new List<InlineKeyboardButton>() { InlineKeyboardButton.WithCallbackData("Back", "Admin:ChannelCommands:Back:ChannelCommands") });
+                                await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, "Here Is Your Admin List :\n Select One Of Them To Remove ",
+                                    replyMarkup: new InlineKeyboardMarkup(keyboard), cancellationToken: ct);
+                                break;
+                            #endregion
+
+                            #region Back
+                            case "Back":
+                                var backWhere = splitData[3];
+                                switch (backWhere)
+                                {
+                                    case "ChannelCommands":
+                                    case "ChannelCommandsClearStep":
+                                        if (backWhere == "ChannelCommandsClearStep")
+                                            await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), CommandSteps = 0 });
+                                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                            "Admin Commands:", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
+                                        break;
+                                }
+                                break;
+                                #endregion
+                        }
+                    }
+                    else
+                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Channel Commands:", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
+
                     break;
                 #endregion
 
