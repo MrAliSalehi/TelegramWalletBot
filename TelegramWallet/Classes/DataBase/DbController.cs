@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using TelegramWallet.Database.Models;
 
-namespace TelegramWallet.Classes;
+namespace TelegramWallet.Classes.DataBase;
 
 public class DbController
 {
@@ -85,6 +85,20 @@ public class DbController
                 findUser.WithDrawAmount = user.WithDrawAmount;
             }
 
+            if (user.Token is not null)
+            {
+                findUser.Token = user.Token;
+            }
+
+            if (user.DepositStep is not null)
+            {
+                findUser.DepositStep = user.DepositStep;
+            }
+
+            if (user.DepositAmount is not null)
+            {
+                findUser.DepositAmount = user.DepositAmount;
+            }
             await db.SaveChangesAsync();
             return true;
         }

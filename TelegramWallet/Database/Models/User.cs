@@ -14,5 +14,8 @@ namespace TelegramWallet.Database.Models
         public string? Language { get; set; }
         public string? WithDrawAmount { get; set; }
         public string? WitchDrawPaymentMethod { get; set; }
+        public string? Token { get; set; }
+        public byte? DepositStep { get; set; }
+        public string? DepositAmount { get; set; }
     }
 }
