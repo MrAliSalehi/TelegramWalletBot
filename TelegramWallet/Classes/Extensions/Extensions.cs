@@ -50,4 +50,58 @@ public static class Extensions
         parsedAmount = 0;
         return false;
     }
+    public static bool TryGetQAndA(this string userInput, out string question, out string answer)
+    {
+        var isValidSyntax = true;
+        if (!userInput.Contains('?') || !userInput.Contains('#'))
+        {
+            isValidSyntax = false;
+            question = "";
+            answer = "";
+            return isValidSyntax;
+        }
+        else
+        {
+            
+            // ? how.. .?
+            // # idk ....
+            var getQuestionMarkIndex = userInput.IndexOf('?')+1;
+            var getExclamationMarkIndex = userInput.IndexOf('#')+1;
+            question = userInput.Substring(getQuestionMarkIndex, getExclamationMarkIndex-2);
+            answer = userInput.Substring(getExclamationMarkIndex);
+            return isValidSyntax;
+
+        }
+    }
+    public static string QuestionsToString(this List<Question> questions)
+    {
+        var questionString = "Your Questions : \n";
+        questions.ForEach(p =>
+        {
+            questionString += $"<b>[ID:{p.Id}]</b>\n-{p.Question1}\n-{p.Answer}\n--------------\n";
+        });
+        return questionString;
+    }
+    public static List<string> QuestionNames(this List<Question> questions)
+    {
+        var results = new List<string>();
+        questions.ForEach(p => results.Add($"Q-{p.Id}:{p.Question1}"));
+        return results;
+    }
+
+    public static void ProcessSubscriptionDetails(this ApiPremiumDetailsResponse apiResponse, out string downloadLimit,
+        out string resolutions, out string price,out string watchOn,out string canUseReferral,out string bonus, out string multiLevelPayment)
+    {
+        downloadLimit = apiResponse.Data.First().Downloads == 0 ? "Unlimited" : $"{apiResponse.Data.First().Downloads} Times";
+        var finalRes = "";
+        apiResponse.Data.First().MovieResolutions.ForEach(p => finalRes += $"{p.Name},");
+        resolutions = finalRes;
+        price = apiResponse.Data.First().Price.ToString();
+        var finalWatchOn = "";
+        apiResponse.Data.First().WatchOn.ForEach(p=>finalWatchOn+= $"{p},");
+        watchOn = finalWatchOn;
+        canUseReferral = apiResponse.Data.First().Ads == 1 ? "Unlimitted" : "Limited Referral Service";
+        bonus = apiResponse.Data.First().Bonus == 1 ? "With Bonus" : "Without Bonus";
+        multiLevelPayment = apiResponse.Data.First().MultiLevelPayment == 1 ? "Multi Level Bonus" : "Bonus Limited";
+    }
 }

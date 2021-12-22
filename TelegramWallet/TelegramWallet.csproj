@@ -22,6 +22,9 @@
   <ItemGroup>
     <Folder Include="Api\Models\ApiReferral\ApiAds\" />
     <Folder Include="Api\Models\ApiSummary\" />
+    <Folder Include="Api\Models\ApiSubscriptions\" />
+    <Folder Include="Api\Models\Donate\" />
+    <Folder Include="Api\Models\Transactions\" />
   </ItemGroup>
 
 </Project>

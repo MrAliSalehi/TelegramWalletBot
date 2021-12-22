@@ -20,7 +20,32 @@ public class DbController
             return new User();
         }
     }
-
+    public async Task<bool> LogoutAsync(string userId)
+    {
+        try
+        {
+            await using var db = new TelegramWallet_DbContext();
+            var findUser = await db.Users.SingleOrDefaultAsync(p => p.UserId == userId);
+            if (findUser is null) return false;
+            findUser.Token = null;
+            findUser.Language = null;
+            findUser.UserPass =null;
+            findUser.LoginStep = 0;
+            findUser.WithDrawStep = 0;
+            findUser.DepositAmount = null;
+            findUser.DepositStep = 0;
+            findUser.WitchDrawPaymentMethod = null;
+            findUser.WithDrawAccount = null;
+            findUser.WithDrawAmount = null;
+            await db.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return false;
+        }
+    }
     public async Task<bool> InsertNewUserAsync(User user)
     {
         try
@@ -41,7 +66,6 @@ public class DbController
             return false;
         }
     }
-
     public async Task<bool> UpdateUserAsync(User user)
     {
         try

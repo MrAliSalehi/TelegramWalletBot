@@ -18,6 +18,7 @@ namespace TelegramWallet.Database.Models
 
         public virtual DbSet<Admin> Admins { get; set; } = null!;
         public virtual DbSet<ForceJoinChannel> ForceJoinChannels { get; set; } = null!;
+        public virtual DbSet<Question> Questions { get; set; } = null!;
         public virtual DbSet<User> Users { get; set; } = null!;
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -54,6 +55,27 @@ namespace TelegramWallet.Database.Models
                 entity.Property(e => e.ChName)
                     .HasMaxLength(350)
                     .IsUnicode(false);
+            });
+
+            modelBuilder.Entity<Question>(entity =>
+            {
+                entity.Property(e => e.Id).HasColumnName("ID");
+
+                entity.Property(e => e.Answer)
+                    .HasMaxLength(500)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatorId)
+                    .HasMaxLength(150)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.Language)
+                    .HasMaxLength(250)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.Question1)
+                    .HasMaxLength(500)
+                    .HasColumnName("Question");
             });
 
             modelBuilder.Entity<User>(entity =>

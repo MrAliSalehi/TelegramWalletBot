@@ -1,6 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.FileProviders;
+﻿using System.Text.RegularExpressions;
 using Telegram.Bot;
 using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
@@ -10,6 +8,7 @@ using TelegramWallet.Api;
 using TelegramWallet.Api.Models.ApiLogin;
 using TelegramWallet.Api.Models.ApiReferral.ApiAds;
 using TelegramWallet.Api.Models.ApiWithdraw;
+using TelegramWallet.Api.Models.Donate;
 using TelegramWallet.Classes.DataBase;
 using TelegramWallet.Classes.Extensions;
 using TelegramWallet.Database.Models;
@@ -21,6 +20,7 @@ namespace TelegramWallet.Classes;
 public class Bot
 {
     //Todo : move in dependencies and get lang from db 
+    // todo select lang - question?awn? done-
 
     #region Injection
     public static Dependencies.Languages UserLang = Dependencies.Languages.English;
@@ -28,8 +28,10 @@ public class Bot
     private readonly ApiController _apiController;
     private readonly AdminController _adminController;
     private readonly ForceJoinController _forceJoinController;
+    private readonly QuestionController _questionController;
     public Bot()
     {
+        _questionController = new QuestionController();
         _forceJoinController = new ForceJoinController();
         _adminController = new AdminController();
         _dbController = new DbController();
@@ -57,6 +59,19 @@ public class Bot
 
     #region Buttons
 
+    #region Settings
+
+    private static readonly InlineKeyboardMarkup SettingsKeyboardMarkup = new(new[]
+    {
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData("Change Language","Setting:ChangeLang"),
+            InlineKeyboardButton.WithCallbackData("Logout","Setting:Logout"),
+        }
+    });
+
+    #endregion
+
     #region Identity
 
     private static readonly KeyboardButton[][] ButtonsIdentity = new[]
@@ -83,7 +98,8 @@ public class Bot
         new[] { new KeyboardButton("Withdraw"),new KeyboardButton("Deposit") },
         new[] { new KeyboardButton("Referral Link"), new KeyboardButton("Referral Ads") },
         new[] {new KeyboardButton("Premium Account")},
-        new[] { new KeyboardButton("Questions"), new KeyboardButton("Support"),new KeyboardButton("History") }
+        new[] { new KeyboardButton("Questions"), new KeyboardButton("Support"),new KeyboardButton("History") },
+        new []{new KeyboardButton("Settings")}
     };
 
     private static readonly ReplyKeyboardMarkup MainMenuKeyboardMarkup = new(ButtonsMainMenu)
@@ -96,28 +112,66 @@ public class Bot
     #endregion
 
     #region Admin
+
+    #region Main Admin Keyboard
     private static readonly InlineKeyboardMarkup AdminKeyboardMarkup = new(new[]
     {
         new[]
         {
             InlineKeyboardButton.WithCallbackData("Admins","Admin:AdminCommands"),
             InlineKeyboardButton.WithCallbackData("Channels","Admin:ChannelCommands"),
+            InlineKeyboardButton.WithCallbackData("Questions","Admin:QuestionCommands"),
             InlineKeyboardButton.WithCallbackData("Exit","Admin:Exit"),
         }
     });
+    #endregion
+
+    #region Admin Sub Keyboards
+
+    #region Admin
     private static readonly InlineKeyboardMarkup AdminCommandsMarkUp = new(new[] {
         new []
         { InlineKeyboardButton.WithCallbackData("Create Admin","Admin:AdminCommands:Create"),
             InlineKeyboardButton.WithCallbackData("Remove Admin","Admin:AdminCommands:Remove"), },
         new [] { InlineKeyboardButton.WithCallbackData("Admin List","Admin:AdminCommands:List"), },
         new [] { InlineKeyboardButton.WithCallbackData("Back","Admin:AdminCommands:Back:Main"), } });
+    #endregion
 
+    #region Channel
     private static readonly InlineKeyboardMarkup ChannelCommandsMarkUp = new(new[] {
         new []
         { InlineKeyboardButton.WithCallbackData("Add Channel","Admin:ChannelCommands:Add"),
             InlineKeyboardButton.WithCallbackData("Remove Channel","Admin:ChannelCommands:Remove"), },
         new [] { InlineKeyboardButton.WithCallbackData("Channel List", "Admin:ChannelCommands:List"), },
         new [] { InlineKeyboardButton.WithCallbackData("Back", "Admin:AdminCommands:Back:Main"), } });
+    #endregion
+
+    #region Question
+
+    private static readonly InlineKeyboardMarkup QuestionCommandsMarkUp = new(new[] {
+        new []
+        { InlineKeyboardButton.WithCallbackData("Add Question","Admin:QuestionCommands:Add"),
+            InlineKeyboardButton.WithCallbackData("Remove Question","Admin:QuestionCommands:Remove"), },
+        new [] { InlineKeyboardButton.WithCallbackData("Question List", "Admin:QuestionCommands:List:CountrySelect"), },
+        new [] { InlineKeyboardButton.WithCallbackData("Back", "Admin:QuestionCommands:Back:Main"), } });
+    #endregion
+
+    #endregion
+
+    #endregion
+
+    #region Back To Main
+
+    private static readonly KeyboardButton[][] BackToMainMenu = new[] { new[] { new KeyboardButton("Back To Main Menu") } };
+
+    private static readonly ReplyKeyboardMarkup BackToMainMenuKeyboardMarkup = new(BackToMainMenu)
+    {
+        Keyboard = BackToMainMenu,
+        Selective = false,
+        OneTimeKeyboard = false,
+        ResizeKeyboard = true
+    };
+
     #endregion
 
     #endregion
@@ -160,7 +214,6 @@ public class Bot
                 break;
         }
     }
-
     private async Task<List<ForceJoinChannel>> ForceJoinAsync(ITelegramBotClient bot, Update e, CancellationToken ct)
     {
         var userId = "";
@@ -187,7 +240,6 @@ public class Bot
 
         return results;
     }
-
     private async Task HandleCallBackQueryAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
     {
         if (e.Data is null) return;
@@ -211,13 +263,33 @@ public class Bot
             }
             #endregion
 
-            #region Order
+            #region Premium Account
             if (e.Data.StartsWith("Order"))
             {
                 var splitData = e.Data.Split(":");
                 var order = splitData[1];
                 var chatId = Convert.ToInt32(splitData[2]);
-                await bot.SendTextMessageAsync(chatId, $"User {chatId}, you Ordered {order}.\n Payment Was SuccessFull.", cancellationToken: ct);
+                var buySub = await _apiController.BuyPremiumAccountAsync(getUser.Token ?? "");
+                if (buySub is null)
+                    await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"This Service Is InActive\nPlease Try Again Latter!", cancellationToken: ct);
+
+                else
+                {
+                    switch (buySub.status)
+                    {
+                        case 201:
+                        case 200:
+                            await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"User {chatId}, you Ordered {order}.\n {buySub.message}", cancellationToken: ct);
+                            break;
+                        case 401 or 405:
+                            await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"Authentication Failed\n Please Try To Login Again", cancellationToken: ct);
+                            break;
+                        default:
+                            await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"Operation Failed!\n {buySub.message} ", cancellationToken: ct);
+                            break;
+                    }
+                }
+
             }
             #endregion
 
@@ -235,7 +307,7 @@ public class Bot
 
             if (e.Data.StartsWith("Support"))
             {
-                await SupportAreaAsync(bot, e, ct);
+                await SupportAreaAsync(bot, e, ct, getUser);
             }
 
             #endregion
@@ -474,15 +546,16 @@ public class Bot
                     WithDrawStep = 0,
 
                 });
-                await _apiController.WithdrawAsync(new ApiWithdrawModel()
+                var results = await _apiController.WithdrawAsync(new ApiWithdrawModel()
                 {
                     account = getUser.WithDrawAccount ?? "",
                     amount = getUser.WithDrawAmount ?? "",
                     gateway = getUser.WitchDrawPaymentMethod ?? "",
 
                 }, getUser.Token ?? "");
+
                 await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                    "Your Withdraw Request Will Be Process In Next 24/48 Hours. \n<b>Thank You For Your Patience</b>",
+                    $"Your Withdraw Request Results Are Here : \n<b>{results.First().message}.</b>",
                     ParseMode.Html, cancellationToken: ct);
             }
             #endregion
@@ -504,10 +577,21 @@ public class Bot
             }
 
             #endregion
+
+            #region Setting
+
+            if (e.Data.StartsWith("Setting"))
+            {
+                await SettingAreaAsync(bot, e, ct, getUser);
+            }
+
+            #endregion
         }
         catch (Exception exception)
         {
             Console.WriteLine(exception);
+            await bot.SendTextMessageAsync(e.From.Id,
+                "We Got Some Problems \nPlease Wait Until WE Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
     }
     private async Task HandleMessageAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
@@ -589,6 +673,8 @@ public class Bot
         {
             await OwnerAsync(bot, e, ct);
             var getAdmin = await _adminController.GetAdminAsync(e.From.Id.ToString());
+
+            #region CommandSteps
             if (getAdmin.CommandSteps is not 0)
             {
                 switch (getAdmin.CommandSteps)
@@ -620,13 +706,61 @@ public class Bot
                         #endregion
                 }
             }
+            #endregion
+
+            #region Question
+            if (getAdmin.QuestionSteps is not 0)
+            {
+                var cancelQuestioningMarkup = new InlineKeyboardMarkup(new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Cancel","Admin:QuestionCommands:Back:QuestionCommandsCleanSteps"),
+                });
+                switch (getAdmin.QuestionSteps)
+                {
+                    #region Add Question
+
+                    case 1:
+                        var canGetData = e.Text.TryGetQAndA(out var question, out var answer);
+                        if (canGetData)
+                        {
+
+                            await bot.SendTextMessageAsync(e.From.Id,
+                                $"Your Question As : <i>{question}</i> \nAnd Your Answer As : <i>{answer}</i>\n Submitted In List!\n<b> Submit Another :\n Or Press Cancel</b>",
+                                ParseMode.Html, cancellationToken: ct, replyMarkup: cancelQuestioningMarkup);
+                            await _questionController.CreateQuestionAsync(new Question()
+                            { CreatorId = e.From.Id.ToString(), Answer = answer, Question1 = question, Language = getAdmin.CurrentQuestionLanguage });
+                        }
+                        else
+                        {
+                            await bot.SendTextMessageAsync(e.From.Id, $"Bad Syntax!\n Try Another! Or Press Cancel", cancellationToken: ct, replyMarkup: cancelQuestioningMarkup);
+                        }
+                        break;
+                    #endregion
+
+                    #region Remove Question
+                    case 2:
+                        var remove = await _questionController.RemoveQuestionAsync(e.Text ?? "");
+                        if (remove)
+                        {
+                            await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), QuestionSteps = 0 });
+                            await bot.SendTextMessageAsync(e.From.Id, "Question Removed Successfully!", replyMarkup: QuestionCommandsMarkUp, cancellationToken: ct);
+                        }
+                        else
+                        {
+                            await bot.SendTextMessageAsync(e.From.Id, "Question Not Found!\nIts Might Be Already Removed.", replyMarkup: cancelQuestioningMarkup, cancellationToken: ct);
+                        }
+                        break;
+                        #endregion
+
+                }
+            }
+            #endregion
         }
 
 
         #endregion
 
     }
-
     private Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         //var errorMessage = exception switch
@@ -672,6 +806,25 @@ public class Bot
 
         return keyBoard;
     }
+    private void CreateKeyboardButtonQuestions(List<string> buttons, out ReplyKeyboardMarkup questionKeyboardMarkup)
+    {
+        var keyBoard = new List<List<KeyboardButton>>();
+        var add = 0;
+        buttons.Insert(0, "Back To Main Menu");
+        foreach (var button in buttons)
+        {
+            if (add % 1 == 0)
+            {
+                keyBoard.Add(new List<KeyboardButton>());
+            }
+            keyBoard.Last().Add(button);
+
+            add++;
+        }
+
+        questionKeyboardMarkup = new ReplyKeyboardMarkup(keyBoard)
+        { Keyboard = keyBoard, OneTimeKeyboard = false, Selective = false, ResizeKeyboard = true };
+    }
     private List<List<InlineKeyboardButton>> CreateInlineButtonAdminList(List<string> buttons, bool needCallBack = true)
     {
         var keyBoard = new List<List<InlineKeyboardButton>>();
@@ -684,21 +837,56 @@ public class Bot
 
                 keyBoard.Add(new List<InlineKeyboardButton>()
                 {
-                    InlineKeyboardButton.WithCallbackData(button,needCallBack?$"Admin:AdminCommands:Remove:{button}":"-")
+                    InlineKeyboardButton.WithCallbackData(button,
+                        needCallBack ? $"Admin:AdminCommands:Remove:{button}" : "-")
                 });
 
             }
-            keyBoard.Last().Add(InlineKeyboardButton.WithCallbackData(button, needCallBack ? $"Admin:AdminCommands:Remove:{button}" : "-"));
+
+            keyBoard.Last().Add(InlineKeyboardButton.WithCallbackData(button,
+                needCallBack ? $"Admin:AdminCommands:Remove:{button}" : "-"));
             add++;
 
         }
 
         return keyBoard;
-    }//"
+    }
+    private List<List<InlineKeyboardButton>> CreateInlineButtonCountryList(List<string> buttons)
+    {
+        var keyBoard = new List<List<InlineKeyboardButton>>();
+        var add = 0;
+        foreach (var button in buttons)
+        {
+            if (add % 3 == 0)
+            {
+                keyBoard.Add(new List<InlineKeyboardButton>());
+            }
+            keyBoard.Last().Add(InlineKeyboardButton.WithCallbackData(button, $"Admin:QuestionCommands:Add:CountrySelect:{button}"));
+            add++;
+        }
+        return keyBoard;
+    }
+    private List<List<InlineKeyboardButton>> CreateInlineButtonCountryListQuestionSelect(List<string> buttons)
+    {
+        var keyBoard = new List<List<InlineKeyboardButton>>();
+        var add = 0;
+        foreach (var button in buttons)
+        {
 
+            if (add % 3 == 0)
+            {
+                keyBoard.Add(new List<InlineKeyboardButton>());
+            }
+
+            keyBoard.Last().Add(InlineKeyboardButton.WithCallbackData(button, $"Admin:QuestionCommands:List:CountrySelect:{button}"));
+            add++;
+
+        }
+
+        return keyBoard;
+    }
     private bool CheckAccountNumber(string paymentMethod, string accountNumber) =>
         paymentMethod switch { "PerfectMoneyUSD" => accountNumber.ToLower().StartsWith("u"), "PerfectMoneyEUR" => accountNumber.ToLower().StartsWith("e"), _ => false };
-
     private async Task AdminAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
     {
         if (e.Data is null) return;
@@ -856,6 +1044,7 @@ public class Bot
                                     case "ChannelCommandsClearStep":
                                         if (backWhere == "ChannelCommandsClearStep")
                                             await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), CommandSteps = 0 });
+
                                         await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
                                             "Admin Commands:", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
                                         break;
@@ -868,6 +1057,176 @@ public class Bot
                         await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Channel Commands:", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
 
                     break;
+                #endregion
+
+                #region Questions
+
+                case "QuestionCommands":
+                    if (splitData.Length > 2)
+                    {
+                        switch (splitData[2])
+                        {
+                            #region Add
+                            case "Add":
+                                if (splitData.Length > 4)
+                                {
+                                    switch (splitData[3])
+                                    {
+                                        #region After Country Select
+                                        case "CountrySelect":
+                                            var country = splitData[4];
+                                            var createdQuestion = await _questionController.CreateQuestionAsync(new Question() { CreatorId = e.From.Id.ToString(), Language = country });
+                                            var cancelQuestionMarkup = new InlineKeyboardMarkup(new[]
+                                            {
+                                                InlineKeyboardButton.WithCallbackData("Cancel",
+                                                    $"Admin:QuestionCommands:Back:QuestionCommandsCleanSteps:{createdQuestion.Id}"),
+                                            });
+                                            await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), QuestionSteps = 1, CurrentQuestionLanguage = country });
+                                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                                $"You Selected {country}\n Now Send Your Question And Answer:\n E.x :\n <i>?How Old Are You\n#Im 10yo</i>",
+                                                ParseMode.Html, cancellationToken: ct, replyMarkup: cancelQuestionMarkup);
+                                            break;
+                                            #endregion
+                                    }
+                                }
+                                else
+                                {
+                                    #region Already Have Country
+                                    var getAdmin = await _adminController.GetAdminAsync(e.From.Id.ToString());
+                                    if (getAdmin.CurrentQuestionLanguage is not null)
+                                    {
+                                        var cancelQuestionMarkup = new InlineKeyboardMarkup(new[]
+                                        {
+                                            InlineKeyboardButton.WithCallbackData("Cancel",
+                                                $"Admin:QuestionCommands:Back:QuestionCommandsCleanLang"),
+                                        });
+                                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                            $"You Currently Using [{getAdmin.CurrentQuestionLanguage} ] \nFor Creating Language With Different Country Language Click (New Language)\n Or You Can Your Question And Answer",
+                                            cancellationToken: ct, replyMarkup: cancelQuestionMarkup);
+                                    }
+                                    #endregion
+
+                                    #region NewCountry
+                                    else
+                                    {
+
+                                        var countryListMarkup = new InlineKeyboardMarkup(CreateInlineButtonCountryList(Dependencies.LanguagesList));
+                                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                            "Select A Country To Continue:", replyMarkup: countryListMarkup,
+                                            cancellationToken: ct);
+                                    }
+                                    #endregion
+                                }
+
+                                break;
+
+                            #endregion
+
+                            #region Remove
+                            case "Remove":
+                                await _adminController.UpdateAdminAsync(new Admin()
+                                { UserId = e.From.Id.ToString(), QuestionSteps = 2 });
+                                await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Enter The Question ID To Remove:", cancellationToken: ct);
+                                break;
+                            #endregion
+
+                            #region List
+                            case "List":
+                                if (splitData.Length > 4)
+                                {
+                                    switch (splitData[3])
+                                    {
+                                        case "CountrySelect":
+                                            var cancelQuestionMarkup = new InlineKeyboardMarkup(new[]
+                                            {
+                                                InlineKeyboardButton.WithCallbackData("Cancel",
+                                                    $"Admin:QuestionCommands:Back:QuestionCommands"),
+                                            });
+                                            var country = splitData[4];
+                                            var questionList =
+                                                await _questionController.QuestionListByCountryAsync(country);
+                                            if (questionList.Count > 0)
+                                            {
+                                                var questions = questionList.QuestionsToString();
+                                                await bot.SendTextMessageAsync(e.From.Id, questions, ParseMode.Html, cancellationToken: ct);
+                                            }
+                                            else
+                                                await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                                    "No Question Found For This Language!", replyMarkup: cancelQuestionMarkup, cancellationToken: ct);
+                                            break;
+                                    }
+                                }
+                                else
+                                {
+
+                                    var countryListKeyboard = CreateInlineButtonCountryListQuestionSelect(Dependencies.LanguagesList);
+                                    countryListKeyboard.Add(new List<InlineKeyboardButton>()
+                                        {
+                                            InlineKeyboardButton.WithCallbackData("Back","Admin:QuestionCommands:Back:QuestionCommands")
+                                        });
+
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                        "PLease Select A Country To Display Its Own Questions:",
+                                        replyMarkup: new InlineKeyboardMarkup(countryListKeyboard), cancellationToken: ct);
+                                }
+
+                                break;
+                            #endregion
+
+                            #region Back
+                            case "Back":
+                                if (splitData.Length > 3)
+                                {
+                                    switch (splitData[3])
+                                    {
+                                        #region QuestionCommands +QuestionCommandsCleanSteps
+                                        case "QuestionCommands":
+                                        case "QuestionCommandsCleanSteps":
+                                            if (splitData[3] == "QuestionCommandsCleanSteps")
+                                            {
+                                                if (splitData.Length > 4)
+                                                {
+                                                    var idToRemove = splitData[4];
+                                                    await _questionController.RemoveQuestionAsync(idToRemove);
+                                                }
+                                                await _adminController.UpdateAdminAsync(new Admin()
+                                                {
+                                                    UserId = e.From.Id.ToString(),
+                                                    QuestionSteps = 0,
+                                                    CurrentQuestionLanguage = null
+                                                });
+                                            }
+                                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                                "Question Commands:", replyMarkup: QuestionCommandsMarkUp,
+                                                cancellationToken: ct);
+                                            break;
+                                        #endregion
+
+                                        #region QuestionCommandsCleanLang
+                                        case "QuestionCommandsCleanLang":
+                                            await _adminController.UpdateAdminAsync(new Admin()
+                                            { UserId = e.From.Id.ToString(), CurrentQuestionLanguage = null });
+                                            var countryListMarkup = new InlineKeyboardMarkup(CreateInlineButtonCountryList(Dependencies.LanguagesList));
+                                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                                "Select A Country To Continue:", replyMarkup: countryListMarkup,
+                                                cancellationToken: ct);
+                                            break;
+                                            #endregion
+
+                                    }
+                                }
+                                else
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                        "Here Is Your Panel :", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+                                break;
+                                #endregion
+                        }
+                    }
+                    else
+                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Question Commands:", replyMarkup: QuestionCommandsMarkUp, cancellationToken: ct);
+
+                    break;
+
                 #endregion
 
                 #region Exit
@@ -886,6 +1245,7 @@ public class Bot
     }
     private async Task RegisteredAreaAsync(ITelegramBotClient bot, Message e, CancellationToken ct, User user)
     {
+
         #region Withdraw 
         switch (user.WithDrawStep)
         {
@@ -985,16 +1345,77 @@ public class Bot
 
         #endregion
 
+        #region Questions
+
+        if (e.Text.StartsWith("Q-"))
+        {
+            //Q-1: how are you bro ?
+            var splitQuestion = e.Text.Split('-'); // [0] q / [1] 1: how ...
+            var question = splitQuestion[1].Split(':')[0]; // [0]
+
+            var getQuestion = await _questionController.GetQuestionByQuestionAsync(new Question() { Id = Convert.ToInt32(question) });
+            if (getQuestion is not null)
+            {
+                await bot.SendTextMessageAsync(e.From.Id,
+                    $"Your Question : {getQuestion.Question1}\n Here Is Your Answer:\n<i>{getQuestion.Answer}</i>", ParseMode.Html,
+                    cancellationToken: ct);
+            }
+            else
+                await bot.SendTextMessageAsync(e.From.Id, "There Is No Answer Submitted For This Question!",
+                    cancellationToken: ct, replyMarkup: BackToMainMenuKeyboardMarkup);
+        }
+
+        #endregion
+
         switch (e.Text)
         {
+            #region Questions
+            case "Questions":
+                var questions = await _questionController.QuestionListByCountryAsync(user.Language ?? "");
+                if (questions.Count > 0)
+                {
+                    CreateKeyboardButtonQuestions(questions.QuestionNames(), out var replyKeyboardMarkup);
+                    await bot.SendTextMessageAsync(e.From.Id, "Here Is Popular Questions:", replyMarkup: replyKeyboardMarkup, cancellationToken: ct);
+                }
+                else
+                    await bot.SendTextMessageAsync(e.From.Id, "No Question Found For Your Language!",
+                        cancellationToken: ct);
+
+
+                break;
+            #endregion
+
+            #region Back To Main Menu
+
+            case "Back To Main Menu":
+                await bot.SendTextMessageAsync(e.From.Id, "You Are In Main : ", replyMarkup: user.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
+                break;
+
+            #endregion
+
+            #region Settings
+
+            case "Settings":
+                await bot.SendTextMessageAsync(e.From.Id, "Your Settings:", replyMarkup: SettingsKeyboardMarkup, cancellationToken: ct);
+                break;
+
+            #endregion
 
             #region Premium Account
             case "Premium Account":
+                var getDetails = await _apiController.PremiumDetailsAsync();
+
+                getDetails.ProcessSubscriptionDetails(out var downloadLimit,
+                    out var resolutions,
+                    out var subPrice,
+                    out var watchOn,
+                    out var canUseReferral, out var bonus, out var multiLevelPayment);
+
                 InlineKeyboardMarkup orderKeyboardMarkup = new(new[] { new[]
                 {
                     InlineKeyboardButton.WithCallbackData("Order",$"Order:PremiumAccount:{e.Chat.Id}"),
                 }});
-                var premiumText = "<b>Resolution:</b> <i>480p 720p 1080p 4K 3D</i>\n<b>Download:</b> <i>Unlimited</i>\n<b>Watch On:</b> <i>TV, Laptop, Phone, Tablet</i>\n<b>Advertise:</b> <i>No Ads</i>\n<b>Language Subtitle:</b> <i>All</i>\n<b>Earn Money</b> <i>Multi Level Payment,Bounce</i> ";
+                var premiumText = $"<b>Price:</b><i>{subPrice}$</i>\n<b>Resolution:</b> <i>{resolutions}</i>\n<b>Download:</b> <i>{downloadLimit}</i>\n<b>Watch On:</b> <i>{watchOn}</i>\n<b>Referral Ads:</b> <i>{canUseReferral}</i>\n<b>Language Subtitle:</b> <i>All</i>\n<b>Earn Money:</b> <i>{multiLevelPayment},{bonus}</i> ";
                 await bot.SendTextMessageAsync(e.Chat.Id, premiumText, ParseMode.Html, replyMarkup: orderKeyboardMarkup, cancellationToken: ct);
                 break;
             #endregion
@@ -1102,22 +1523,56 @@ public class Bot
 
             #region Referral Ads
             case "Referral Ads":
-                var referralAdsKeyboard = new InlineKeyboardMarkup(new[]
+                try
                 {
-                    new[]
+                    var getReferralInfo = await _apiController.GetReferralAdsInfoAsync(user.Token ?? "");
+                    var price = 6;
+                    if (getReferralInfo is not null)
                     {
-                        InlineKeyboardButton.WithCallbackData("6 USD","Ref:Ads:Check:6"),
-                        InlineKeyboardButton.WithCallbackData("12 USD","Ref:Ads:Check:12"),
-                    },
-                    new[]
-                    {
-                        InlineKeyboardButton.WithCallbackData("18 USD","Ref:Ads:Check:18"),
-                        InlineKeyboardButton.WithCallbackData("24 USD","Ref:Ads:Check:24"),
-                        InlineKeyboardButton.WithCallbackData("30 USD","Ref:Ads:Check:30"),
+                        price = getReferralInfo.data.price;
                     }
-                });
-                await bot.SendTextMessageAsync(e.Chat.Id, "Select Your Plan To Continue: ", replyMarkup: referralAdsKeyboard, cancellationToken: ct);
+                    var referralAdsKeyboard = new InlineKeyboardMarkup(new[]
+                    {
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData($"{price} USD",$"Ref:Ads:Check:{price}"),
+                            InlineKeyboardButton.WithCallbackData($"{price * 2} USD",$"Ref:Ads:Check:{price * 2}"),
+                        },
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData($"{price * 3} USD",$"Ref:Ads:Check:{price * 3}"),
+                            InlineKeyboardButton.WithCallbackData($"{price * 4} USD",$"Ref:Ads:Check:{price * 4}"),
+                            InlineKeyboardButton.WithCallbackData($"{price * 5} USD",$"Ref:Ads:Check:{price * 5}"),
+                        }
+                    });
+                    await bot.SendTextMessageAsync(e.Chat.Id, "Select Your Plan To Continue: ", replyMarkup: referralAdsKeyboard, cancellationToken: ct);
+                }
+                catch (Exception)
+                {
+                    await bot.SendTextMessageAsync(e.Chat.Id, "This Service Currently Is UnAvailable\n Please Try Again Latter! ", cancellationToken: ct);
+
+                }
+
                 break;
+            #endregion
+
+            #region Referral Link
+
+            case "Referral Link":
+                var checkSub = await _apiController.CheckSubscriptionsAsync(user.Token ?? "");
+                if (checkSub.message == "nothing found")
+                    await bot.SendTextMessageAsync(e.From.Id, "Please Buy A Subscription First!", cancellationToken: ct);
+                else
+                {
+                    var getLink = await _apiController.InfoAsync(user.Token ?? "");
+                    if (getLink is not null)
+                        await bot.SendTextMessageAsync(e.From.Id, $"Here Is Your Referral Token: `{getLink.data.link}`", ParseMode.MarkdownV2, cancellationToken: ct);
+                    else
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Service Is Not Available.\n Please Try Again Latter!</b>", ParseMode.Html, cancellationToken: ct);
+
+                }
+                break;
+
             #endregion
 
             #region statistics
@@ -1136,11 +1591,91 @@ public class Bot
                         cancellationToken: ct);
                 }
                 break;
+            #endregion
+
+            #region History
+
+            case "History":
+                var getTransactions = await _apiController.TransactionsAsync(user.Token ?? "");
+                if (getTransactions.data.Count < 1)
+                    await bot.SendTextMessageAsync(e.From.Id, "<b>No Transaction Found!</b>", ParseMode.Html, cancellationToken: ct);
+                else
+                {
+                    var sortedList = getTransactions.data.Take(10).OrderBy(p => p.type).ThenBy(p => p.id);
+                    var results = "";
+                    foreach (var trans in sortedList)
+                    {
+                        if (trans.mlp_user is not null)
+                            results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nLevel:{trans.level}\nDate:{trans.created_at}\n--------\n";
+                        if (trans.bonus)
+                            results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nDate:{trans.created_at} \n--------\n";
+                        if (trans.referral)
+                            results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nReferral Count: {trans.referral_count}\nRemaining Referral Count: {trans.remaining_referral_count}\nReferral Reward: {trans.referral_reward}\nDate:{trans.created_at} \n--------\n";
+                        else
+                            results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nDate:{trans.created_at} \n--------\n";
+                    }
+                    await bot.SendTextMessageAsync(e.From.Id, $"<b>{results}</b>", ParseMode.Html, cancellationToken: ct);
+                }
+
+                break;
+
                 #endregion
         }
     }
+    private async Task SettingAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct, User user)
+    {
+        var splitData = e.Data.Split(":");
+        var settingType = splitData[1];
+        switch (settingType)
+        {
+            #region Change Language
+            case "ChangeLang":
+                var languageKeyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList));
+                await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Select Your New Language Please : ", replyMarkup: languageKeyBoardMarkup, cancellationToken: ct);
+                break;
+            #endregion
 
-    private async Task SupportAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
+            #region Logout
+            case "Logout":
+                if (splitData.Length > 2)
+                {
+                    var status = splitData[2];
+                    switch (status)
+                    {
+                        case "Yes":
+                            var logOut = await _dbController.LogoutAsync(e.From.Id.ToString());
+                            if (logOut)
+                            {
+                                await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
+                                await bot.SendTextMessageAsync(e.Message.Chat.Id, "<b>You LoggedOut From System!</b>", ParseMode.Html, replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
+                            }
+                            else
+                            {
+                                await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                    "<b>Something Wrong Happens\n Please Try Again Latter!</b>", cancellationToken: ct);
+                            }
+                            break;
+                        case "No":
+                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                "<b>You Canceled This Operation.\n Have A Great Day!</b>", ParseMode.Html, cancellationToken: ct);
+                            break;
+                    }
+                }
+                else
+                {
+                    var confirmLogoutKeyboard = new InlineKeyboardMarkup(new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Yes","Setting:Logout:Yes"),
+                    InlineKeyboardButton.WithCallbackData("Cancel","Setting:Logout:No")
+                });
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Are You Sure You Wanna Logout?",
+                        cancellationToken: ct, replyMarkup: confirmLogoutKeyboard);
+                }
+                break;
+                #endregion
+        }
+    }
+    private async Task SupportAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct, User user)
     {
         var splitData = e.Data.Split(":");
         var areaType = splitData[1];
@@ -1167,24 +1702,54 @@ public class Bot
                     }
 
                 });
+                var getInfo = await _apiController.InfoAsync(user.Token ?? "");
                 await bot.SendTextMessageAsync(e.From.Id,
-                    $"Select A Value To Donate : \n (Your Current Balance Is : - )", cancellationToken: ct, replyMarkup: donateKeyboardMarkup);
+                    $"Select A Value To Donate : \n (Your Current Balance Is : {getInfo?.data.balance} )", cancellationToken: ct, replyMarkup: donateKeyboardMarkup);
                 break;
             #endregion
 
             #region ProcessDonate
             case "ProcessDonate":
-                await bot.DeleteMessageAsync(e.From.Id, e.Message.MessageId, ct);
-                await bot.SendTextMessageAsync(e.From.Id, $"Tnx For Your {splitData[2]}$ Donate,Have A Great Day!",
-                    cancellationToken: ct);
+                //403 not enf money - 200/201 tnx  
+                var donate = await _apiController.DonateAsync(new ApiDonateModel() { amount = splitData[2] }, user.Token ?? "");
+                if (donate is not null)
+                {
+                    switch (donate.status)
+                    {
+                        case 200 or 201 or 403:
+                            await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, $"<b>{donate.message}</b>", ParseMode.Html, cancellationToken: ct);
+                            break;
+                        default:
+                            await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, "Donate Service Is InActive!\n Please Try Again Latter", cancellationToken: ct);
+                            break;
+                    }
+                }
+
                 break;
             #endregion
 
+            #region Ticket
             case "Ticket":
+                if (splitData.Length > 2)
+                {
+                    switch (splitData[2])
+                    {
+                        case "Back":
+                            await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
+                            break;
+                    }
+                }
+                else
+                {
+                    var contactKeyboard = new InlineKeyboardMarkup(new[]
+                    { InlineKeyboardButton.WithUrl("Support", "https://t.me/MEXINAMITen"),InlineKeyboardButton.WithCallbackData("Cancel","Support:Ticket:Back")});
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                        "You Can Contact To Our Support From This Link :", replyMarkup: contactKeyboard, cancellationToken: ct);
+                }
                 break;
+                #endregion
         }
     }
-
     private async Task ReferralAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct, User user)
     {
         var splitData = e.Data.Split(":");
@@ -1212,12 +1777,29 @@ public class Bot
 
                     #region Finish
                     case "Finish":
-                        await bot.DeleteMessageAsync(e.From.Id, e.Message.MessageId, ct);
-                        var count = splitData[3];
-                        var getResponse = await _apiController.BuyReferralAdsAsync(new ApiAdsModel() { persons = count }, user.Token ?? "");
-                        await bot.SendTextMessageAsync(e.From.Id,
-                            $"<b>Your Payment Result:</b>\n <i>{getResponse.data}</i>", ParseMode.Html,
-                            cancellationToken: ct);
+                        try
+                        {
+                            await bot.DeleteMessageAsync(e.From.Id, e.Message.MessageId, ct);
+                            var count = splitData[3];
+                            var getResponse = await _apiController.BuyReferralAdsAsync(new ApiAdsModel() { persons = count }, user.Token ?? "");
+                            if (getResponse is null)
+                            {
+                                await bot.SendTextMessageAsync(e.From.Id,
+                                    $"<b>This Service Is InActive!\n Please Try Again Latter!</i>", ParseMode.Html,
+                                    cancellationToken: ct);
+                            }
+                            else
+                                await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Payment Result:</b>\n <i>{getResponse.data}</i>", ParseMode.Html,
+                                    cancellationToken: ct);
+                        }
+                        catch (Exception)
+                        {
+                            await bot.SendTextMessageAsync(e.From.Id,
+                                $"<b>We Got Some Problems Here!\nPlease Try Again Latter.\nIf Problem Still Resist Please Contact Support!</i>",
+                                ParseMode.Html, cancellationToken: ct);
+
+                        }
+
                         break;
                         #endregion
                 }
