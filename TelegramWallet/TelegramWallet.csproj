@@ -27,6 +27,7 @@
     <Folder Include="Api\Models\ApiRegister\" />
     <Folder Include="Api\Models\ApiGateways\" />
     <Folder Include="Api\Models\ApiManualGateways\" />
+    <Folder Include="Api\Models\ApiPmAccountData\" />
     <Folder Include="Api\Models\Transactions\" />
   </ItemGroup>
 

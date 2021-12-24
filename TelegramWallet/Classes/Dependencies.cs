@@ -50,4 +50,5 @@ public static class Dependencies
     public static string ConnectionString => @"Server=.\SQL2019;Database=TelegramWallet_Db;Integrated Security=True;Connect Timeout=30;User ID=bot;Password=jokerr123";
     public static List<string> StatusList => new() { "admin", "Admin", "owner", "Owner", "Member", "Administrator", "administrator", "Creator" };
     public static string ApiUrl => "https://mexinamit.ali-chv.com/api";
+    public static string PerfectMoneyApiUrl => "https://mexinamit.com/gateways/prefect-money";
 }

@@ -11,8 +11,8 @@ public static class Extensions
         request.AddHeader("Accept", "application/json");
         return request;
     }
-    public static List<string> AdminsNamesToList(this List<Admin> admins) => admins.Select(admin => admin.UserId).ToList(); 
-    public static List<string> ChannelNamesToList(this List<ForceJoinChannel> channels) => channels.Select(channel => channel.ChId).ToList(); 
+    public static List<string> AdminsNamesToList(this List<Admin> admins) => admins.Select(admin => admin.UserId).ToList();
+    public static List<string> ChannelNamesToList(this List<ForceJoinChannel> channels) => channels.Select(channel => channel.ChId).ToList();
     public static string EscapeUnSupportChars(this string mainString) => mainString.Replace(".", @"\.");
     public static string ReplacePaymentName(this string paymentName) => paymentName switch
     {
@@ -32,7 +32,7 @@ public static class Extensions
             userInput = userInput.Replace("$", "");
         }
 
-        var canBeInt =double.TryParse(userInput, out var parsedInt);
+        var canBeInt = double.TryParse(userInput, out var parsedInt);
         if (canBeInt)
         {
             if (parsedInt >= 10.0)
@@ -64,12 +64,12 @@ public static class Extensions
         }
         else
         {
-            
+
             // ? how.. .?
             // # idk ....
-            var getQuestionMarkIndex = userInput.IndexOf('?')+1;
-            var getExclamationMarkIndex = userInput.IndexOf('#')+1;
-            question = userInput.Substring(getQuestionMarkIndex, getExclamationMarkIndex-2);
+            var getQuestionMarkIndex = userInput.IndexOf('?') + 1;
+            var getExclamationMarkIndex = userInput.IndexOf('#') + 1;
+            question = userInput.Substring(getQuestionMarkIndex, getExclamationMarkIndex - 2);
             answer = userInput.Substring(getExclamationMarkIndex);
             return isValidSyntax;
 
@@ -96,7 +96,7 @@ public static class Extensions
         await write.WriteLineAsync($"--TIME[{DateTime.Now}]-ERROR[{exception}] MESSAGE[{exception.Message}]--");
     }
     public static void ProcessSubscriptionDetails(this ApiPremiumDetailsResponse apiResponse, out string downloadLimit,
-        out string resolutions, out string price,out string watchOn,out string canUseReferral,out string bonus, out string multiLevelPayment)
+        out string resolutions, out string price, out string watchOn, out string canUseReferral, out string bonus, out string multiLevelPayment)
     {
         downloadLimit = apiResponse.Data.First().Downloads == 0 ? "Unlimited" : $"{apiResponse.Data.First().Downloads} Times";
         var finalRes = "";
@@ -104,10 +104,12 @@ public static class Extensions
         resolutions = finalRes;
         price = apiResponse.Data.First().Price.ToString();
         var finalWatchOn = "";
-        apiResponse.Data.First().WatchOn.ForEach(p=>finalWatchOn+= $"{p},");
+        apiResponse.Data.First().WatchOn.ForEach(p => finalWatchOn += $"{p},");
         watchOn = finalWatchOn;
         canUseReferral = apiResponse.Data.First().Ads == 1 ? "Unlimitted" : "Limited Referral Service";
         bonus = apiResponse.Data.First().Bonus == 1 ? "With Bonus" : "Without Bonus";
         multiLevelPayment = apiResponse.Data.First().MultiLevelPayment == 1 ? "Multi Level Bonus" : "Bonus Limited";
     }
+
+    public static string ExtractPaymentId(this string mainResponse) => mainResponse.Split(' ')[1];
 }

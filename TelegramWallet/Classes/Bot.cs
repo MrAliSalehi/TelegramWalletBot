@@ -382,7 +382,7 @@ public class Bot
                     }
 
                     });
-
+                    await _dbController.UpdateUserAsync(new User(){UserId = e.From.Id.ToString(),DepositAmount = value});
                     await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, " Select Payment Method :", replyMarkup: continueKeyboardMarkup, cancellationToken: ct);
                 }
                 #endregion
@@ -431,15 +431,40 @@ public class Bot
 
                     #endregion
 
+                    #region Perfect Money
+                    case "PM":
+                        var pendingMessagePm = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
+                        var getAccounts = await _apiController.PerfectMoneyAccountDetailAsync(getUser.Token ?? "");
+                        var selectedAccount = value == "USD" ? getAccounts?.data.usd_account ?? "-" : getAccounts?.data.eur_account ?? "-";
+                        var cancelPmKeyboard = new InlineKeyboardMarkup(new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData("Continue", $"ConfirmSiteAccDeposit:-"),
+                            InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"),
+                        });
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), ManualAccount = selectedAccount });
+                        await bot.EditMessageTextAsync(pendingMessagePm.Chat.Id, pendingMessagePm.MessageId, $"Here Is Our Perfect Money Account Number : \n ```{selectedAccount}```", ParseMode.MarkdownV2, replyMarkup: cancelPmKeyboard, cancellationToken: ct);
+
+
+                        break;
+
+                    case "Perfect Money":
+                        var unitKeyboard = new InlineKeyboardMarkup(new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData("USD",$"FinishDeposit:USD:{value}:PM"),
+                            InlineKeyboardButton.WithCallbackData("EUR",$"FinishDeposit:EUR:{value}:PM"),
+                        });
+                        await bot.SendTextMessageAsync(e.Message.Chat.Id, "Please Select Your Payment-Unit:", replyMarkup: unitKeyboard, cancellationToken: ct);
+                        break;
+                    #endregion
+
                     #region Manuals - ACTIVE
                     default:
-                        var pendingMessage =await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>",ParseMode.Html, cancellationToken: ct);
-
+                        var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAmount = value });
                         var gateways = await _apiController.GateWaysListAsync(getUser.Token ?? "");
                         var selected = gateways.data.FirstOrDefault(p => p.manual_gateways.name == splitData[3]);
                         if (selected is null)
-                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id,pendingMessage.MessageId, "This Payment Method Is Not Available\n Please Try Again Latter", cancellationToken: ct);
+                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, "This Payment Method Is Not Available\n Please Try Again Latter", cancellationToken: ct);
                         else
                         {
                             var cancelKeyboard = new InlineKeyboardMarkup(new[]
@@ -447,9 +472,8 @@ public class Bot
                                 InlineKeyboardButton.WithCallbackData("Continue", $"ConfirmSiteAccDeposit:-"),
                                 InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"),
                             });
-                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
-                                $"Here Is Our {selected.manual_gateways.name} Account Number : \n ```{selected.account}```", ParseMode.MarkdownV2, replyMarkup: cancelKeyboard, cancellationToken: ct);
-                            await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 1,ManualAccount = selected.account});
+                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"Here Is Our {selected.manual_gateways.name} Account Number : \n ```{selected.account}```", ParseMode.MarkdownV2, replyMarkup: cancelKeyboard, cancellationToken: ct);
+                            await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), ManualAccount = selected.account });
                         }
                         break;
 
@@ -467,19 +491,31 @@ public class Bot
                     switch (splitData[1])
                     {
                         case "End":
-                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                "<b>Pending Request ...</b>", ParseMode.Html, cancellationToken: ct);
-                            //todo api 
-                           var paymentStatus = await _apiController.ManualTransactionAsync(new ApiManualGatewaysModel()
+                            var msg = await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "<b>Pending Request ...</b>", ParseMode.Html, cancellationToken: ct);
+
+                            if (getUser.ManualAccount.StartsWith("U") || getUser.ManualAccount.StartsWith("E"))
                             {
-                                amount = getUser.DepositAmount??"",
-                                account = getUser.DepositAccount??"",
-                                transaction_id =splitData[2],
-                                manual_account = getUser.ManualAccount??""
-                            }, getUser.Token ?? "");
-                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                $"<i>Your Request`s Results Are Back :</i>\n<b>{paymentStatus.data}</b>", ParseMode.Html,
-                                cancellationToken: ct);
+                                var createPayment = await _apiController.CreatePaymentAsync(getUser.Token ?? "");
+                                var currency = getUser.ManualAccount.StartsWith("U") ? "USD" : "EUR";
+                                var finalUrl = createPayment.data.payment_id;
+                                var urlKeyboard = new InlineKeyboardMarkup(new[] {
+                                    InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?payment={finalUrl}&currency={currency}&amount={getUser.DepositAmount}"), });
+                                await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Your Payment Has Been Created\n Continue With Link:", replyMarkup: urlKeyboard, cancellationToken: ct);
+
+                            }
+                            else
+                            {
+                                var paymentStatus = await _apiController.ManualTransactionAsync(new ApiManualGatewaysModel()
+                                { amount = getUser.DepositAmount ?? "", account = getUser.DepositAccount ?? "", transaction_id = splitData[2], manual_account = getUser.ManualAccount ?? "" }, getUser.Token ?? "");
+                                if (paymentStatus.status is 200 or 201)
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>Your Request`s Results Are Back :</i>\n<b>{paymentStatus?.data ?? "Nothing Found"}</b>", ParseMode.Html, cancellationToken: ct);
+
+                                else
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>We Got Some Problems:\n{paymentStatus.data}</i>", ParseMode.Html, cancellationToken: ct);
+
+                            }
+
+
                             break;
                     }
                 }
@@ -600,7 +636,6 @@ public class Bot
                 {
                     #region PerfectMoney
                     case "Perfect Money":
-
                         var unitKeyboard = new InlineKeyboardMarkup(new[]
                         {
                             InlineKeyboardButton.WithCallbackData("USD",$"FinishWithDraw:{splitData[2]}:{value}:PerfectMoneyUSD"),
@@ -1104,7 +1139,6 @@ public class Bot
                 return false;
         }
     }
-
     private async Task AdminAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
     {
         if (e.Data is null || e.Message is null) return;
@@ -1467,6 +1501,18 @@ public class Bot
         try
         {
             if (e.From is null || e.Text is null) return;
+            if (e.Text.StartsWith("/start") && e.Text.Split(' ').Length >= 1)
+            {
+                // /start payment_confirmPayment
+                var splitData = e.Text.Split('_');
+                var paymentId = splitData[1];
+                var pendingMessage =await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
+                var results =await _apiController.CheckPaymentAsync(new ApiManualCheckPaymentModel() { payment_id = paymentId }, user.Token ?? "");
+                var verified = results.data.verified ? "Yes" : "No";
+                await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
+                    $"Results Are Here :\n<b>Verified:{verified}\nOrder Id: {results.data.order_id}\n Amount:{results.data.amount}\nPayment ID:{results.data.payment_id}</b>",
+                    ParseMode.Html, cancellationToken: ct);
+            }
 
             #region Withdraw 
             switch (user.WithDrawStep)
@@ -1487,6 +1533,11 @@ public class Bot
 
                 #region EnterCustom Amount
                 case 2:
+                    if (e.Text.Length > 20)
+                    {
+                        await bot.SendTextMessageAsync(e.From.Id, $"```This Amount Is Too Long!\n Maximum Length Is 17```", ParseMode.MarkdownV2, cancellationToken: ct);
+                        return;
+                    }
                     var isValid = e.Text.TryParseAmount(out var parsedAmount);
                     if (isValid)
                     {
@@ -1547,6 +1598,11 @@ public class Bot
             {
                 #region Custom Value
                 case 1:
+                    if (e.Text.Length > 20)
+                    {
+                        await bot.SendTextMessageAsync(e.From.Id, $"```This Amount Is Too Long!\n Maximum Length Is 17```", ParseMode.MarkdownV2, cancellationToken: ct);
+                        return;
+                    }
                     var isValid = e.Text.TryParseAmount(out var parsedAmount);
                     if (isValid)
                     {
@@ -1571,7 +1627,11 @@ public class Bot
 
                 #region GotAccount-Getting Transaction ID
                 case 2:
-                    //TODO - Change this to account -manual account and trans id and send to new api - TODO
+                    if (e.Text.Length > 20)
+                    {
+                        await bot.SendTextMessageAsync(e.From.Id, $"```This Account Number Is Too Long!\n Maximum Length Is 12```", ParseMode.MarkdownV2, cancellationToken: ct);
+                        return;
+                    }
                     var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"), });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAccount = e.Text, DepositStep = 3 });
                     await bot.SendTextMessageAsync(e.From.Id, $"```Please Enter Your Transaction/Operation ID: ```", ParseMode.MarkdownV2, replyMarkup: cancelKeyboard, cancellationToken: ct);
@@ -1580,7 +1640,11 @@ public class Bot
 
                 #region GotTransactionID-Getting Final Confirm
                 case 3:
-                    // 
+                    if (e.Text.Length > 20)
+                    {
+                        await bot.SendTextMessageAsync(e.From.Id, $"```This Transaction Id Is Too Long!\n Maximum Length Is 12```", ParseMode.MarkdownV2, cancellationToken: ct);
+                        return;
+                    }
                     var cancelDepositKeyboard = new InlineKeyboardMarkup(new[]
                     {
                         InlineKeyboardButton.WithCallbackData("Continue", $"ConfirmSiteAccDeposit:End:{e.Text??"-"}"),
@@ -1590,9 +1654,9 @@ public class Bot
                     await bot.SendTextMessageAsync(e.From.Id,
                         $"<i>Here Is Your Check List:</i> \n If its True Please Press Confirm.\n<b>Account Number:{user.DepositAccount}\nDeposit Amount: {user.DepositAmount}$\nTransaction ID: {e.Text}\nAccount You Submitted For: {user.ManualAccount}</b>", ParseMode.Html, replyMarkup: cancelDepositKeyboard, cancellationToken: ct);
                     break;
-                #endregion
+                    #endregion
 
-                #endregion
+                    #endregion
             }
 
             #endregion
@@ -1624,14 +1688,15 @@ public class Bot
             switch (user.PublicSteps)
             {
                 #region Tracking Payment
-                case 1: 
+                case 1:
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), PublicSteps = 0 });
-                    var pendingMessage =await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
-                    var results = await _apiController.CheckPaymentAsync(new ApiManualCheckPaymentModel() {payment_id = e.Text??""}, user.Token ?? "");
-                    await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"<i>Your Tracking Results Are Back:</i><b>{results?.data??"Nothing Found"}</b>", ParseMode.Html, cancellationToken: ct);
-                    
+                    var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
+                    var results = await _apiController.CheckPaymentAsync(new ApiManualCheckPaymentModel() { payment_id = e.Text ?? "" }, user.Token ?? "");
+                    var verified = results.data.verified ? "Yes" : "No";
+                    await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"<i>Your Tracking Results Are Back:</i><b>\nVerified:{verified}\nOrder Id: {results.data.order_id}\n Amount:{results.data.amount}\nPayment ID:{results.data.payment_id}</b>", ParseMode.Html, cancellationToken: ct);
+
                     break;
-                #endregion
+                    #endregion
             }
 
             #endregion
@@ -1673,7 +1738,11 @@ public class Bot
                 #region Premium Account
                 case "Premium Account":
                     var getDetails = await _apiController.PremiumDetailsAsync();
-
+                    if (getDetails is null)
+                    {
+                        await bot.SendTextMessageAsync(e.Chat.Id, "This Service Is Not Available Right Now!", ParseMode.Html, cancellationToken: ct);
+                        return;
+                    }
                     getDetails.ProcessSubscriptionDetails(out var downloadLimit,
                         out var resolutions,
                         out var subPrice,
@@ -2044,7 +2113,7 @@ public class Bot
                     await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
                         "<i>Progress Has Been Canceled</i>", ParseMode.Html, cancellationToken: ct);
                     break;
-                #endregion
+                    #endregion
 
             }
         }

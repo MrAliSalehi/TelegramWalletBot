@@ -2,9 +2,11 @@
 using RestSharp;
 using RestSharp.Authenticators;
 using TelegramWallet.Api.Models;
+using TelegramWallet.Api.Models.ApiCreatePayment;
 using TelegramWallet.Api.Models.ApiGateways;
 using TelegramWallet.Api.Models.ApiLogin;
 using TelegramWallet.Api.Models.ApiManualGateways;
+using TelegramWallet.Api.Models.ApiPmAccountData;
 using TelegramWallet.Api.Models.ApiReferral.ApiAds;
 using TelegramWallet.Api.Models.ApiRegister;
 using TelegramWallet.Api.Models.ApiSubscriptions;
@@ -314,7 +316,6 @@ public class ApiController
             var request = new RestRequest("/payments/manuals/transaction/submit");
             request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(model));
             var response = await client.PostAsync<ApiManualGatewaysResponse>(request);
-            var res = JsonConvert.SerializeObject(response);
             return response;
         }
         catch (Exception exception)
@@ -336,7 +337,48 @@ public class ApiController
             var request = new RestRequest("/payments/check");
             request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(model));
             var response = await client.PostAsync<ApiManualCheckPaymentResponse>(request);
-            var res = JsonConvert.SerializeObject(response);
+            return response;
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception);
+            await Extensions.WriteLogAsync(exception);
+            return null;
+        }
+
+    }
+    public async Task<ApiPmAccountDataResponse?> PerfectMoneyAccountDetailAsync(string token)
+    {
+        try
+        {
+            var client = new RestClient(Dependencies.ApiUrl)
+            {
+                Authenticator = new JwtAuthenticator(token)
+            };
+            var request = new RestRequest("/gateways/perfect-money/account");
+            request.LoadDefaultHeaders();
+            var response = await client.GetAsync<ApiPmAccountDataResponse>(request);
+            return response;
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception);
+            await Extensions.WriteLogAsync(exception);
+            return null;
+        }
+
+    }
+    public async Task<ApiCreatePaymentResponse?> CreatePaymentAsync(string token)
+    {
+        try
+        {
+            var client = new RestClient(Dependencies.ApiUrl)
+            {
+                Authenticator = new JwtAuthenticator(token)
+            };
+            var request = new RestRequest("/payments/create");
+            request.LoadDefaultHeaders();
+            var response = await client.GetAsync<ApiCreatePaymentResponse>(request);
             return response;
         }
         catch (Exception exception)
