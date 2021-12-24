@@ -1,7 +1,4 @@
-﻿using System.Runtime.InteropServices.ComTypes;
-using Newtonsoft.Json;
-using RestSharp;
-using TelegramWallet.Api.Models;
+﻿using RestSharp;
 using TelegramWallet.Database.Models;
 
 namespace TelegramWallet.Classes.Extensions;
@@ -14,7 +11,6 @@ public static class Extensions
         request.AddHeader("Accept", "application/json");
         return request;
     }
-
     public static List<string> AdminsNamesToList(this List<Admin> admins) => admins.Select(admin => admin.UserId).ToList(); 
     public static List<string> ChannelNamesToList(this List<ForceJoinChannel> channels) => channels.Select(channel => channel.ChId).ToList(); 
     public static string EscapeUnSupportChars(this string mainString) => mainString.Replace(".", @"\.");
@@ -50,9 +46,15 @@ public static class Extensions
         parsedAmount = 0;
         return false;
     }
-    public static bool TryGetQAndA(this string userInput, out string question, out string answer)
+    public static bool TryGetQAndA(this string? userInput, out string question, out string answer)
     {
         var isValidSyntax = true;
+        if (string.IsNullOrEmpty(userInput))
+        {
+            question = "";
+            answer = "";
+            return false;
+        }
         if (!userInput.Contains('?') || !userInput.Contains('#'))
         {
             isValidSyntax = false;
@@ -88,7 +90,11 @@ public static class Extensions
         questions.ForEach(p => results.Add($"Q-{p.Id}:{p.Question1}"));
         return results;
     }
-
+    public static async Task WriteLogAsync(Exception exception)
+    {
+        await using var write = new StreamWriter("\\Log.txt", true);
+        await write.WriteLineAsync($"--TIME[{DateTime.Now}]-ERROR[{exception}] MESSAGE[{exception.Message}]--");
+    }
     public static void ProcessSubscriptionDetails(this ApiPremiumDetailsResponse apiResponse, out string downloadLimit,
         out string resolutions, out string price,out string watchOn,out string canUseReferral,out string bonus, out string multiLevelPayment)
     {

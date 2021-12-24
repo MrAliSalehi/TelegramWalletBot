@@ -5,19 +5,19 @@ namespace TelegramWallet.Classes.DataBase;
 
 public class DbController
 {
-    public async Task<User> GetUserAsync(User user)
+    public async Task<User?> GetUserAsync(User user)
     {
         try
         {
             await using var context = new TelegramWallet_DbContext();
             var userExists = await context.Users.FirstOrDefaultAsync(p => p.UserId == user.UserId);
 
-            return userExists ?? new User();
+            return userExists ?? null;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
-            return new User();
+            return null;
         }
     }
     public async Task<bool> LogoutAsync(string userId)
@@ -122,6 +122,21 @@ public class DbController
             if (user.DepositAmount is not null)
             {
                 findUser.DepositAmount = user.DepositAmount;
+            }
+
+            if (user.DepositAccount is not null)
+            {
+                findUser.DepositAccount = user.DepositAccount;
+            }
+
+            if (user.ManualAccount is not null)
+            {
+                findUser.ManualAccount = user.ManualAccount;
+            }
+
+            if (user.PublicSteps is not null)
+            {
+                findUser.PublicSteps = user.PublicSteps;
             }
             await db.SaveChangesAsync();
             return true;

@@ -82,6 +82,10 @@ namespace TelegramWallet.Database.Models
             {
                 entity.Property(e => e.Id).HasColumnName("ID");
 
+                entity.Property(e => e.DepositAccount)
+                    .HasMaxLength(250)
+                    .IsUnicode(false);
+
                 entity.Property(e => e.DepositAmount)
                     .HasMaxLength(250)
                     .IsUnicode(false);
@@ -90,6 +94,10 @@ namespace TelegramWallet.Database.Models
 
                 entity.Property(e => e.Language)
                     .HasMaxLength(150)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.ManualAccount)
+                    .HasMaxLength(350)
                     .IsUnicode(false);
 
                 entity.Property(e => e.Token).IsUnicode(false);

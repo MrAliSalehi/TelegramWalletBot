@@ -23,7 +23,10 @@
     <Folder Include="Api\Models\ApiReferral\ApiAds\" />
     <Folder Include="Api\Models\ApiSummary\" />
     <Folder Include="Api\Models\ApiSubscriptions\" />
-    <Folder Include="Api\Models\Donate\" />
+    <Folder Include="Api\Models\ApiDonate\" />
+    <Folder Include="Api\Models\ApiRegister\" />
+    <Folder Include="Api\Models\ApiGateways\" />
+    <Folder Include="Api\Models\ApiManualGateways\" />
     <Folder Include="Api\Models\Transactions\" />
   </ItemGroup>
 

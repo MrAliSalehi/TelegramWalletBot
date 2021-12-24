@@ -1,12 +1,13 @@
-﻿using System.Text.RegularExpressions;
-using Telegram.Bot;
+﻿using Telegram.Bot;
 using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using TelegramWallet.Api;
 using TelegramWallet.Api.Models.ApiLogin;
+using TelegramWallet.Api.Models.ApiManualGateways;
 using TelegramWallet.Api.Models.ApiReferral.ApiAds;
+using TelegramWallet.Api.Models.ApiRegister;
 using TelegramWallet.Api.Models.ApiWithdraw;
 using TelegramWallet.Api.Models.Donate;
 using TelegramWallet.Classes.DataBase;
@@ -196,7 +197,7 @@ public class Bot
                     await bot.SendTextMessageAsync(e.CallbackQuery.From.Id, $"Dear {e.CallbackQuery.From.Id}, You Did`nt Join In This Channel(s): \n {notJoinedChannels}\n To Use This Bot, Please First Join This Channel(s)", cancellationToken: ct);
                 }
                 break;
-            case UpdateType.Message when e.Message != null:
+            case UpdateType.Message when e.Message is { Text: { } }:
                 var checkJoinMessageSide = await ForceJoinAsync(bot, e, ct);
 
                 if (checkJoinMessageSide.Count == 0)
@@ -246,6 +247,11 @@ public class Bot
         if (e.Message is null) return;
 
         var getUser = await _dbController.GetUserAsync(new User() { UserId = e.From.Id.ToString() });
+        if (getUser is null)
+        {
+            await bot.SendTextMessageAsync(e.From.Id, "We Have Trouble With Finding Your Information In Service!\n Please Try Again Latter", cancellationToken: ct);
+            return;
+        }
         try
         {
 
@@ -334,11 +340,8 @@ public class Bot
                 #region Cancel
                 else if (value == "Cancel")
                 {
-                    await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
-                    await _dbController.UpdateUserAsync(new User()
-                    { UserId = e.From.Id.ToString(), DepositStep = 0 });
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>Transaction Has Been Canceled</b>",
-                        ParseMode.Html, cancellationToken: ct);
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 0 });
+                    await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, "<b>Transaction Has Been Canceled</b>", ParseMode.Html, cancellationToken: ct);
                 }
                 #endregion
 
@@ -348,9 +351,9 @@ public class Bot
 
                     var continueKeyboardMarkup = new InlineKeyboardMarkup(new[] {
                     new [] {
-                    InlineKeyboardButton.WithCallbackData("Payeer",$"FinishDeposit:{value}:{chatId}:Payeer"),
-                    InlineKeyboardButton.WithCallbackData("WebMoney",$"FinishDeposit:{value}:{chatId}:WebMoney"),
-                    InlineKeyboardButton.WithCallbackData("TUSD Erc20", $"FinishDeposit:{value}:{chatId}:TUSD Erc20") },
+                    InlineKeyboardButton.WithCallbackData("Web Money",$"FinishDeposit:{value}:{chatId}:WebMoney"),
+                    InlineKeyboardButton.WithCallbackData("Perfect Money",$"FinishDeposit:{value}:{chatId}:Perfect Money"),
+                    },
 
                     new [] {
                         InlineKeyboardButton.WithCallbackData("SUSD Erc20",$"FinishDeposit:{value}:{chatId}:SUSD Erc20"),
@@ -359,8 +362,8 @@ public class Bot
 
                     new []
                     {
-                        InlineKeyboardButton.WithCallbackData("Perfect Money",$"FinishDeposit:{value}:{chatId}:Perfect Money"),
-                        InlineKeyboardButton.WithCallbackData("PUSD Erc20",$"FinishDeposit:{value}:{chatId}:PUSD Erc20"),
+                    InlineKeyboardButton.WithCallbackData("Payeer",$"FinishDeposit:{value}:{chatId}:Payeer"),
+                    InlineKeyboardButton.WithCallbackData("PUSD Erc20",$"FinishDeposit:{value}:{chatId}:PUSD Erc20"),
                         InlineKeyboardButton.WithCallbackData("MUSD Erc20",$"FinishDeposit:{value}:{chatId}:MUSD Erc20"),
                     },
 
@@ -389,17 +392,105 @@ public class Bot
             {
                 await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
                 await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 0 });
-                var paymentKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithUrl("Pay", "https://google.com"), });
+
                 var splitData = e.Data.Split(":");
                 var value = splitData[1];
                 var paymentMethodNameReplace = splitData[3].ReplacePaymentName();
-                await bot.SendTextMessageAsync(e.Message.Chat.Id,
-                    $"<b>Account ID:</b><i>{e.From.Id}</i>\n <b>Payment Method:</b> <i>{paymentMethodNameReplace}</i> \n <b>Amount Deposit:</b> <i>{value}</i>\n <b>Current Balance:</b> <i> 1.12$ </i>",
-                    replyMarkup: paymentKeyboard,
-                    parseMode: ParseMode.Html,
-                    cancellationToken: ct);
+                switch (paymentMethodNameReplace)
+                {
+                    #region Removed
+                    #region WebMoney
+
+                    //    
+                    //    await bot.SendTextMessageAsync(e.From.Id, "Please Send Your Deposit Amount : ", replyMarkup: cancelKeyboard, cancellationToken: ct);
+                    //    break;
+                    #endregion
+                    #region Perfect Money-Payeer-PerfectMoney
+                    //case "Payeer":
+                    //case "WebMoney":
+                    //case "Perfect Money":
+                    //    
+                    //    break;
+                    #endregion
+                    #region Bitcoin-DogeCoin-LiteCoin
+                    //case "BitCoin":
+                    //case "LiteCoin":
+                    //case "DogeCoin":
+                    //var msg = await bot.SendTextMessageAsync(e.From.Id, "<i>Please Wait ...</i>", ParseMode.Html, cancellationToken: ct);
+                    //var getUrl = await _apiController.CreateCoinXoPaymentAsync(new ApiCoinXoModel() { price = value }, getUser.Token ?? "");
+                    //if (getUrl?.data is not null)
+                    //{
+                    //    var getInfo = await _apiController.InfoAsync(getUser.Token ?? "");
+                    //    var urlKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithUrl("Process Deposit", $"{getUrl.data}"), });
+                    //    await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, $"Here Is Your Payment Link :\n<b>Account ID:</b><i>{e.From.Id}</i>\n <b>Payment Method:</b> <i>{paymentMethodNameReplace}</i> \n <b>Deposit Amount :</b> <i>{value}$</i>\n <b>Current Balance:</b> <i> {getInfo?.data.balance}$ </i>", ParseMode.Html, replyMarkup: urlKeyboard, cancellationToken: ct);
+                    //}
+                    //else
+                    //    await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Right Now Our Deposit Service Is InActive!\n Please Try Again Latter", cancellationToken: ct);
+                    //break;
+                    #endregion
+
+                    #endregion
+
+                    #region Manuals - ACTIVE
+                    default:
+                        var pendingMessage =await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>",ParseMode.Html, cancellationToken: ct);
+
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAmount = value });
+                        var gateways = await _apiController.GateWaysListAsync(getUser.Token ?? "");
+                        var selected = gateways.data.FirstOrDefault(p => p.manual_gateways.name == splitData[3]);
+                        if (selected is null)
+                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id,pendingMessage.MessageId, "This Payment Method Is Not Available\n Please Try Again Latter", cancellationToken: ct);
+                        else
+                        {
+                            var cancelKeyboard = new InlineKeyboardMarkup(new[]
+                            {
+                                InlineKeyboardButton.WithCallbackData("Continue", $"ConfirmSiteAccDeposit:-"),
+                                InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"),
+                            });
+                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
+                                $"Here Is Our {selected.manual_gateways.name} Account Number : \n ```{selected.account}```", ParseMode.MarkdownV2, replyMarkup: cancelKeyboard, cancellationToken: ct);
+                            await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 1,ManualAccount = selected.account});
+                        }
+                        break;
+
+                        #endregion
+                }
+
             }
 
+            if (e.Data.StartsWith("ConfirmSiteAccDeposit"))
+            {
+                //DepositConfirmSiteAcc:End:{e.Text}
+                var splitData = e.Data.Split(':');
+                if (splitData.Length > 2)
+                {
+                    switch (splitData[1])
+                    {
+                        case "End":
+                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                "<b>Pending Request ...</b>", ParseMode.Html, cancellationToken: ct);
+                            //todo api 
+                           var paymentStatus = await _apiController.ManualTransactionAsync(new ApiManualGatewaysModel()
+                            {
+                                amount = getUser.DepositAmount??"",
+                                account = getUser.DepositAccount??"",
+                                transaction_id =splitData[2],
+                                manual_account = getUser.ManualAccount??""
+                            }, getUser.Token ?? "");
+                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                $"<i>Your Request`s Results Are Back :</i>\n<b>{paymentStatus.data}</b>", ParseMode.Html,
+                                cancellationToken: ct);
+                            break;
+                    }
+                }
+                else
+                {
+                    var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"), });
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "<b>Now Please Enter Your Account Number:</b>", ParseMode.Html, replyMarkup: cancelKeyboard, cancellationToken: ct);
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 2 });
+                }
+
+            }
             #endregion
 
             #region Withdraw
@@ -492,7 +583,6 @@ public class Bot
                         await bot.SendTextMessageAsync(e.From.Id, "<b>Transaction Has Been Canceled</b>",
                             ParseMode.Html, cancellationToken: ct);
                         break;
-
                         #endregion
                 }
 
@@ -505,36 +595,45 @@ public class Bot
                 var value = splitData[1];
                 var paymentMethod = splitData[3];
 
-                #region PerfectMoney
-                if (paymentMethod == "Perfect Money")
-                {
-                    var unitKeyboard = new InlineKeyboardMarkup(new[]
-                    {
-                        InlineKeyboardButton.WithCallbackData("USD",$"FinishWithDraw:{splitData[2]}:{value}:PerfectMoneyUSD"),
-                        InlineKeyboardButton.WithCallbackData("EUR",$"FinishWithDraw:{splitData[2]}:{value}:PerfectMoneyEUR"),
-                    });
-                    await bot.SendTextMessageAsync(e.From.Id, "Please Select One Amount-Unit To Process Your Order :",
-                        cancellationToken: ct, replyMarkup: unitKeyboard);
-                }
-                else if (paymentMethod is "PerfectMoneyUSD" or "PerfectMoneyEUR")
-                {
-                    await bot.SendTextMessageAsync(e.From.Id,
-                        "Now Please Send Your Account Number:\n (Your Account Number Is Depend On Your Previous Selection)",
-                        cancellationToken: ct);
-                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawAmount = value, WithDrawStep = 4, WitchDrawPaymentMethod = paymentMethod });
-                }
-                #endregion
 
-                else
+                switch (paymentMethod)
                 {
-                    await bot.SendTextMessageAsync(e.From.Id, "<b><i>Please Send Your WMZ: </i></b>", ParseMode.Html, cancellationToken: ct);
-                    await _dbController.UpdateUserAsync(new User()
-                    {
-                        UserId = e.From.Id.ToString(),
-                        WithDrawStep = 1,
-                        WitchDrawPaymentMethod = paymentMethod,
-                        WithDrawAmount = value,
-                    });
+                    #region PerfectMoney
+                    case "Perfect Money":
+
+                        var unitKeyboard = new InlineKeyboardMarkup(new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData("USD",$"FinishWithDraw:{splitData[2]}:{value}:PerfectMoneyUSD"),
+                            InlineKeyboardButton.WithCallbackData("EUR",$"FinishWithDraw:{splitData[2]}:{value}:PerfectMoneyEUR"),
+                        });
+                        await bot.SendTextMessageAsync(e.From.Id, "Please Select One Amount-Unit To Process Your Order :",
+                            cancellationToken: ct, replyMarkup: unitKeyboard);
+                        break;
+                    #endregion
+
+                    #region PerfectMoney
+                    case "PerfectMoneyUSD" or "PerfectMoneyEUR":
+                        await bot.SendTextMessageAsync(e.From.Id,
+                            "Now Please Send Your Account Number:\n (Your Account Number Is Depend On Your Previous Selection)",
+                            cancellationToken: ct);
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawAmount = value, WithDrawStep = 4, WitchDrawPaymentMethod = paymentMethod });
+                        break;
+                    #endregion
+
+                    #region Others:
+                    default:
+                        var accName = paymentMethod == "WebMoney" ? "WMZ" : "Account Number";
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b><i>Please Send Your {accName} </i></b>", ParseMode.Html, cancellationToken: ct);
+                        await _dbController.UpdateUserAsync(new User()
+                        {
+                            UserId = e.From.Id.ToString(),
+                            WithDrawStep = 1,
+                            WitchDrawPaymentMethod = paymentMethod,
+                            WithDrawAmount = value,
+                        });
+                        break;
+                        #endregion
+
                 }
             }
 
@@ -555,7 +654,7 @@ public class Bot
                 }, getUser.Token ?? "");
 
                 await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                    $"Your Withdraw Request Results Are Here : \n<b>{results.First().message}.</b>",
+                    $"Your Withdraw Request Results Are Here : \n<b>{results.message}.</b>",
                     ParseMode.Html, cancellationToken: ct);
             }
             #endregion
@@ -563,205 +662,300 @@ public class Bot
             #region Referral
 
             if (e.Data.StartsWith("Ref"))
-            {
                 await ReferralAreaAsync(bot, e, ct, getUser);
-            }
+
 
             #endregion
 
             #region Admin
 
             if (e.Data.StartsWith("Admin"))
-            {
                 await AdminAreaAsync(bot, e, ct);
-            }
+
 
             #endregion
 
             #region Setting
 
             if (e.Data.StartsWith("Setting"))
-            {
-                await SettingAreaAsync(bot, e, ct, getUser);
-            }
+                await SettingAreaAsync(bot, e, ct);
+
+
+            #endregion
+
+            #region Register
+
+            if (e.Data.StartsWith("Identity"))
+                await IdentityAreaAsync(bot, e, ct, getUser);
+
 
             #endregion
         }
         catch (Exception exception)
         {
+            await Extensions.Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
-            await bot.SendTextMessageAsync(e.From.Id,
-                "We Got Some Problems \nPlease Wait Until WE Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+            await bot.SendTextMessageAsync(e.From.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+            await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawStep = 0, DepositStep = 0 });
         }
     }
     private async Task HandleMessageAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
     {
         Console.WriteLine($"Message: '{e.Chat.Id}' from :[{e.Text}].");
-
-        #region Insert Db
-        await _dbController.InsertNewUserAsync(new User()
+        try
         {
-            UserId = e.Chat.Id.ToString(),
-            Language = "English",
-            LoginStep = 0,
-            WithDrawAccount = "0",
-            UserPass = "",
-            WithDrawStep = 0
-        });
+            if (e.Text is null or "" || e.From is null) return;
 
-        #endregion
-
-        var getUser = await _dbController.GetUserAsync(new User() { UserId = e.Chat.Id.ToString() });
-
-        #region Registeration Area
-        switch (getUser.LoginStep)
-        {
-            #region Login
-            case 1:
-                await bot.SendTextMessageAsync(e.Chat.Id, $"<b>Dear {e.Text} </b>\n Please Enter Your Password:", ParseMode.Html, cancellationToken: ct);
-                await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
-                break;
-            case 2:
-                var loginResponse = await _apiController.LoginAsync(new ApiLoginModel() { username = getUser.UserPass, password = e.Text });
-                if (loginResponse is not null)
-                {
-                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
-                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html, replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
-                }
-                else
-                {
-                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
-                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Wrong User Or Password,Please Try Again :</b> ", ParseMode.Html, replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
-                }
-                break;
-            #endregion
-
-            #region RegisteredUsers
-            case 3:
-                await RegisteredAreaAsync(bot, e, ct, getUser);
-                break;
-                #endregion
-        }
-        #endregion
-
-        #region Public Messages
-        switch (e.Text)
-        {
-            #region Start
-            case "/start":
-                var keyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList));
-                await bot.SendTextMessageAsync(e.Chat.Id, "Select Language Please : ", replyMarkup: keyBoardMarkup, cancellationToken: ct);
-                break;
-            #endregion
-
-            #region Login
-            case "Login":
-                await bot.SendTextMessageAsync(e.Chat.Id, "<b>Please Enter Your User Name :</b>", ParseMode.Html, cancellationToken: ct);
-                await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 1 });
-                await bot.DeleteMessageAsync(e.Chat.Id, e.MessageId, ct);
-                break;
-                #endregion
-
-        }
-        #endregion
-
-        #region Main-Owner
-        //e.Chat.Id is 1127927726 or 1222521875
-
-        var getAllAdmins = await _adminController.GetAllAdminsAsync();
-        if (getAllAdmins.Any(p => p.UserId == e.From.Id.ToString()))
-        {
-            await OwnerAsync(bot, e, ct);
-            var getAdmin = await _adminController.GetAdminAsync(e.From.Id.ToString());
-
-            #region CommandSteps
-            if (getAdmin.CommandSteps is not 0)
+            #region Insert Db
+            await _dbController.InsertNewUserAsync(new User()
             {
-                switch (getAdmin.CommandSteps)
-                {
-                    #region CreateAdmin
-                    case 1:
-                        await _adminController.UpdateAdminAsync(new Admin()
-                        { CommandSteps = 0, UserId = e.From.Id.ToString() });
-                        var add = await _adminController.AddOwnerAsync(new Admin() { UserId = e.Text ?? "" });
-                        if (add)
-                            await bot.SendTextMessageAsync(e.From.Id, $"User:[{e.Text}] Is Now Admin!", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+                UserId = e.Chat.Id.ToString(),
+                Language = "English",
+                LoginStep = 0,
+                WithDrawAccount = "0",
+                UserPass = "",
+                WithDrawStep = 0
+            });
+
+            #endregion
+
+            var getUser = await _dbController.GetUserAsync(new User() { UserId = e.Chat.Id.ToString() });
+            if (getUser is null)
+            {
+                await bot.SendTextMessageAsync(e.From.Id,
+                    "Sorry We Have Some Issues With Identify You,Please Try Again Latter", cancellationToken: ct);
+                return;
+            }
+            #region Registeration Area
+            switch (getUser.LoginStep)
+            {
+                #region Login
+                case 1:
+                    if (!e.Text.Contains(':'))
+                    {
+                        await bot.SendTextMessageAsync(e.Chat.Id, $"<b>Dear {e.Text} </b>\n Please Enter Your Password:", ParseMode.Html, cancellationToken: ct);
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
+                    }
+                    else
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your User Name Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+
+                    break;
+                case 2:
+                    if (!e.Text.Contains(':'))
+                    {
+                        var loginResponse = await _apiController.LoginAsync(new ApiLoginModel() { username = getUser.UserPass, password = e.Text });
+                        if (loginResponse is not null)
+                        {
+                            await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
+                            await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html, replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
+                        }
                         else
-                            await bot.SendTextMessageAsync(e.From.Id, $"There Is A Problem During Adding This Admin!\n He Might Be Already Admin !", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
-                        break;
+                        {
+                            await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
+                            await bot.SendTextMessageAsync(e.Chat.Id, "<b>Wrong User Or Password,Please Try Again :</b> ", ParseMode.Html, replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
+                        }
+                    }
+                    else
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+
+                    break;
+                #endregion
+
+                #region RegisteredUsers
+                case 3:
+                    await RegisteredAreaAsync(bot, e, ct, getUser);
+                    break;
+                #endregion
+
+                #region Register
+
+                #region Getting Password
+                case 4:
+                    if (!e.Text.Contains(':'))
+                    {
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 5, UserPass = $"{e.Text}:" });
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Email :({e.Text}) Submitted!\n Now Please Enter A Strong Password: </b>", ParseMode.Html, cancellationToken: ct);
+                    }
+                    else
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Email Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+                    break;
+                #endregion
+
+                #region Get Link-optional
+                case 5:
+                    if (!e.Text.Contains(':'))
+                    {
+                        var continueRegister = new InlineKeyboardMarkup(new[]
+                        {
+                        InlineKeyboardButton.WithCallbackData("Continue", "Identity:Register:ContinueWithOutLink"),
+                    });
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 6, UserPass = $"{getUser.UserPass}{e.Text}:" });
+                        await bot.SendTextMessageAsync(e.From.Id,
+                            $"<b>Got It!\n If You Have Any Invitation Link (From Site)\n Please Enter It Here:\n </b> <i>If No,Press Continue</i>", ParseMode.Html, replyMarkup: continueRegister, cancellationToken: ct);
+                    }
+                    else
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+
+                    break;
+                #endregion
+
+                #region Finish Register With Link
+                case 6:
+                    if (!e.Text.Contains(':'))
+                    {
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
+                        await bot.SendTextMessageAsync(e.From.Id, "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html, cancellationToken: ct);
+                        //Todo : Api
+                        if (getUser.UserPass is null or "")
+                            await bot.SendTextMessageAsync(e.From.Id, "We Have problem With Storing Your Data \n Please Come Back Latter", cancellationToken: ct);
+                        else
+                        {
+                            var emailPass = getUser.UserPass.Split(':');
+                            await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
+                        }
+                    }
+                    else
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+
+                    break;
+
                     #endregion
 
-                    #region Add Channel Id
-
-                    case 2:
-                        await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), CommandSteps = 0 });
-                        var addChannel = await _forceJoinController.AddChannelAsync(new ForceJoinChannel() { ChId = e.Text ?? "" });
-                        if (addChannel)
-                            await bot.SendTextMessageAsync(e.From.Id, "Channel Has Been Added SuccessFully", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
-                        else
-                            await bot.SendTextMessageAsync(e.From.Id, "Channel Is Already In The List!", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
-
-                        break;
-
-                        #endregion
-                }
+                    #endregion
             }
             #endregion
 
-            #region Question
-            if (getAdmin.QuestionSteps is not 0)
+            #region Public Messages
+            switch (e.Text)
             {
-                var cancelQuestioningMarkup = new InlineKeyboardMarkup(new[]
-                {
-                    InlineKeyboardButton.WithCallbackData("Cancel","Admin:QuestionCommands:Back:QuestionCommandsCleanSteps"),
-                });
-                switch (getAdmin.QuestionSteps)
-                {
-                    #region Add Question
+                #region Start
+                case "/start":
+                    var keyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList));
+                    await bot.SendTextMessageAsync(e.Chat.Id, "Select Language Please : ", replyMarkup: keyBoardMarkup, cancellationToken: ct);
+                    break;
+                #endregion
 
-                    case 1:
-                        var canGetData = e.Text.TryGetQAndA(out var question, out var answer);
-                        if (canGetData)
-                        {
+                #region Login
+                case "Login":
+                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Please Enter Your User Name :</b>", ParseMode.Html, cancellationToken: ct);
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 1 });
+                    await bot.DeleteMessageAsync(e.Chat.Id, e.MessageId, ct);
+                    break;
+                #endregion
 
-                            await bot.SendTextMessageAsync(e.From.Id,
-                                $"Your Question As : <i>{question}</i> \nAnd Your Answer As : <i>{answer}</i>\n Submitted In List!\n<b> Submit Another :\n Or Press Cancel</b>",
-                                ParseMode.Html, cancellationToken: ct, replyMarkup: cancelQuestioningMarkup);
-                            await _questionController.CreateQuestionAsync(new Question()
-                            { CreatorId = e.From.Id.ToString(), Answer = answer, Question1 = question, Language = getAdmin.CurrentQuestionLanguage });
-                        }
-                        else
-                        {
-                            await bot.SendTextMessageAsync(e.From.Id, $"Bad Syntax!\n Try Another! Or Press Cancel", cancellationToken: ct, replyMarkup: cancelQuestioningMarkup);
-                        }
-                        break;
+                #region Register
+                case "Register":
+                    var registerKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 4 });
+                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Enter An Email Please : </b>", ParseMode.Html, replyMarkup: registerKeyboard, cancellationToken: ct);
+                    break;
                     #endregion
 
-                    #region Remove Question
-                    case 2:
-                        var remove = await _questionController.RemoveQuestionAsync(e.Text ?? "");
-                        if (remove)
-                        {
-                            await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), QuestionSteps = 0 });
-                            await bot.SendTextMessageAsync(e.From.Id, "Question Removed Successfully!", replyMarkup: QuestionCommandsMarkUp, cancellationToken: ct);
-                        }
-                        else
-                        {
-                            await bot.SendTextMessageAsync(e.From.Id, "Question Not Found!\nIts Might Be Already Removed.", replyMarkup: cancelQuestioningMarkup, cancellationToken: ct);
-                        }
-                        break;
-                        #endregion
-
-                }
             }
             #endregion
+
+            #region Main-Owner
+            //e.Chat.Id is 1127927726 or 1222521875
+
+            var getAllAdmins = await _adminController.GetAllAdminsAsync();
+            if (getAllAdmins.Any(p => p.UserId == e.From.Id.ToString()))
+            {
+                await OwnerAsync(bot, e, ct);
+                var getAdmin = await _adminController.GetAdminAsync(e.From.Id.ToString());
+
+                #region CommandSteps
+                if (getAdmin.CommandSteps is not 0)
+                {
+                    switch (getAdmin.CommandSteps)
+                    {
+                        #region CreateAdmin
+                        case 1:
+                            await _adminController.UpdateAdminAsync(new Admin()
+                            { CommandSteps = 0, UserId = e.From.Id.ToString() });
+                            var add = await _adminController.AddOwnerAsync(new Admin() { UserId = e.Text ?? "" });
+                            if (add)
+                                await bot.SendTextMessageAsync(e.From.Id, $"User:[{e.Text}] Is Now Admin!", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+                            else
+                                await bot.SendTextMessageAsync(e.From.Id, $"There Is A Problem During Adding This Admin!\n He Might Be Already Admin !", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+                            break;
+                        #endregion
+
+                        #region Add Channel Id
+
+                        case 2:
+                            await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), CommandSteps = 0 });
+                            var addChannel = await _forceJoinController.AddChannelAsync(new ForceJoinChannel() { ChId = e.Text ?? "" });
+                            if (addChannel)
+                                await bot.SendTextMessageAsync(e.From.Id, "Channel Has Been Added SuccessFully", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
+                            else
+                                await bot.SendTextMessageAsync(e.From.Id, "Channel Is Already In The List!", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
+
+                            break;
+
+                            #endregion
+                    }
+                }
+                #endregion
+
+                #region Question
+                if (getAdmin.QuestionSteps is not 0)
+                {
+                    var cancelQuestioningMarkup = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Admin:QuestionCommands:Back:QuestionCommandsCleanSteps"), });
+                    switch (getAdmin.QuestionSteps)
+                    {
+                        #region Add Question
+
+                        case 1:
+                            var canGetData = e.Text.TryGetQAndA(out var question, out var answer);
+                            if (canGetData)
+                            {
+
+                                await bot.SendTextMessageAsync(e.From.Id,
+                                    $"Your Question As : <i>{question}</i> \nAnd Your Answer As : <i>{answer}</i>\n Submitted In List!\n<b> Submit Another :\n Or Press Cancel</b>",
+                                    ParseMode.Html, cancellationToken: ct, replyMarkup: cancelQuestioningMarkup);
+                                await _questionController.CreateQuestionAsync(new Question()
+                                { CreatorId = e.From.Id.ToString(), Answer = answer, Question1 = question, Language = getAdmin.CurrentQuestionLanguage });
+                            }
+                            else
+                            {
+                                await bot.SendTextMessageAsync(e.From.Id, $"Bad Syntax!\n Try Another! Or Press Cancel", cancellationToken: ct, replyMarkup: cancelQuestioningMarkup);
+                            }
+                            break;
+                        #endregion
+
+                        #region Remove Question
+                        case 2:
+                            var remove = await _questionController.RemoveQuestionAsync(e.Text ?? "");
+                            if (remove)
+                            {
+                                await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), QuestionSteps = 0 });
+                                await bot.SendTextMessageAsync(e.From.Id, "Question Removed Successfully!", replyMarkup: QuestionCommandsMarkUp, cancellationToken: ct);
+                            }
+                            else
+                            {
+                                await bot.SendTextMessageAsync(e.From.Id, "Question Not Found!\nIts Might Be Already Removed.", replyMarkup: cancelQuestioningMarkup, cancellationToken: ct);
+                            }
+                            break;
+                            #endregion
+
+                    }
+                }
+                #endregion
+            }
+
+
+            #endregion
         }
-
-
-        #endregion
+        catch (Exception exception)
+        {
+            await Extensions.Extensions.WriteLogAsync(exception);
+            Console.WriteLine(exception.Message);
+            await bot.SendTextMessageAsync(e.Chat.Id,
+                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+        }
 
     }
-    private Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
+    private async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         //var errorMessage = exception switch
         //{
@@ -771,22 +965,32 @@ public class Bot
         //};
 
         //Console.WriteLine(errorMessage);
+
+        await Extensions.Extensions.WriteLogAsync(exception);
         Console.WriteLine(exception.Message);
-        return Task.CompletedTask;
     }
     #endregion
 
     #region Methods
     public async Task OwnerAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
     {
-        if (e.Text is null) return;
-
-        if (e.From is null) return;
-
-        if (e.Text is "!")
+        try
         {
-            await bot.SendTextMessageAsync(e.From.Id, "Here Is Your Panel : ", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+            if (e.Text is null || e.From is null) return;
+
+            if (e.Text is "!")
+            {
+                await bot.SendTextMessageAsync(e.From.Id, "Here Is Your Panel : ", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+            }
         }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception);
+            await Extensions.Extensions.WriteLogAsync(exception);
+            await bot.SendTextMessageAsync(e.From.Id,
+                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+        }
+
 
     }
     private List<List<InlineKeyboardButton>> CreateInlineButton(List<string> buttons)
@@ -885,12 +1089,25 @@ public class Bot
 
         return keyBoard;
     }
-    private bool CheckAccountNumber(string paymentMethod, string accountNumber) =>
-        paymentMethod switch { "PerfectMoneyUSD" => accountNumber.ToLower().StartsWith("u"), "PerfectMoneyEUR" => accountNumber.ToLower().StartsWith("e"), _ => false };
+    private static bool CheckAccountNumber(string paymentMethod, string accountNumber, out string units)
+    {
+        switch (paymentMethod)
+        {
+            case "PerfectMoneyUSD":
+                units = "USD";
+                return accountNumber.ToLower().StartsWith("u");
+            case "PerfectMoneyEUR":
+                units = "EUR";
+                return accountNumber.ToLower().StartsWith("e");
+            default:
+                units = string.Empty;
+                return false;
+        }
+    }
+
     private async Task AdminAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
     {
-        if (e.Data is null) return;
-        if (e.Message is null) return;
+        if (e.Data is null || e.Message is null) return;
         try
         {
             var splitData = e.Data.Split(":");
@@ -1238,205 +1455,256 @@ public class Bot
         }
         catch (Exception exception)
         {
+            await Extensions.Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
-            throw;
+            await bot.SendTextMessageAsync(e.From.Id,
+                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
 
     }
     private async Task RegisteredAreaAsync(ITelegramBotClient bot, Message e, CancellationToken ct, User user)
     {
-
-        #region Withdraw 
-        switch (user.WithDrawStep)
+        try
         {
-            #region CheckList-GetAccountNumber
-            case 1:
-                await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), WithDrawAccount = e.Text });
-                var continueWithdraw = new InlineKeyboardMarkup(new[]
-                {
+            if (e.From is null || e.Text is null) return;
+
+            #region Withdraw 
+            switch (user.WithDrawStep)
+            {
+                #region CheckList-GetAccountNumber
+                case 1:
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), WithDrawAccount = e.Text });
+                    var continueWithdraw = new InlineKeyboardMarkup(new[]
+                    {
                     InlineKeyboardButton.WithCallbackData("Continue", $"ProcessWithdraw:{user.WithDrawAmount}:{user.WitchDrawPaymentMethod}"),
                     InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"),
                 });
-                await bot.SendTextMessageAsync(e.Chat.Id,
-                    $"You CheckList Is Ready:\n <b>Withdraw Amount : </b> <i>{user.WithDrawAmount}</i>\n<b>WithDraw Payment Method:</b><i>{user.WitchDrawPaymentMethod}</i>\n<b>Account Number:</b> <i>{e.Text}</i>",
-                    ParseMode.Html, cancellationToken: ct, replyMarkup: continueWithdraw);
-                break;
-            #endregion
+                    await bot.SendTextMessageAsync(e.Chat.Id,
+                        $"You CheckList Is Ready:\n <b>Withdraw Amount : </b> <i>{user.WithDrawAmount}</i>\n<b>WithDraw Payment Method:</b><i>{user.WitchDrawPaymentMethod}</i>\n<b>Account Number:</b> <i>{e.Text}</i>",
+                        ParseMode.Html, cancellationToken: ct, replyMarkup: continueWithdraw);
+                    break;
+                #endregion
 
-            #region EnterCustom Amount
-            case 2:
-                var isValid = e.Text.TryParseAmount(out var parsedAmount);
-                if (isValid)
-                {
-                    await _dbController.UpdateUserAsync(new User()
-                    { UserId = e.From.Id.ToString(), WithDrawAmount = parsedAmount.ToString() });
-
-                    var continueCustomWithdrawKeyboard = new InlineKeyboardMarkup(new[]
+                #region EnterCustom Amount
+                case 2:
+                    var isValid = e.Text.TryParseAmount(out var parsedAmount);
+                    if (isValid)
                     {
+                        await _dbController.UpdateUserAsync(new User()
+                        { UserId = e.From.Id.ToString(), WithDrawAmount = parsedAmount.ToString() });
+
+                        var continueCustomWithdrawKeyboard = new InlineKeyboardMarkup(new[]
+                        {
                         InlineKeyboardButton.WithCallbackData("Continue",$"WithDraw:{parsedAmount}:{e.From.Id}"),
                         InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"),
                     });
-                    await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Entered Amount Is [{parsedAmount}$]</b>\n If Its Correct Please Press Continue",
-                        ParseMode.Html, replyMarkup: continueCustomWithdrawKeyboard, cancellationToken: ct);
-                }
-                else
-                {
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>Please Enter A Valid Number.\n Amount Must Be More Than 10.0 $</b> ",
-                        ParseMode.Html, cancellationToken: ct);
-                }
-                break;
-
-            #endregion
-
-            #region AccountNumber Based On USD OR EUR
-
-            case 4:
-                await bot.SendTextMessageAsync(e.From.Id, "<b>Please Wait Until We Check Your Account Number...</b> ",
-                    ParseMode.Html, cancellationToken: ct);
-                if (CheckAccountNumber(user.WitchDrawPaymentMethod ?? "", e.Text ?? ""))
-                {
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>Your Account Number Has Been Verified</b> ",
-                        ParseMode.Html, cancellationToken: ct);
-                    await _dbController.UpdateUserAsync(new User()
-                    { UserId = e.From.Id.ToString(), WithDrawAccount = e.Text ?? "", WithDrawStep = 0 });
-                }
-                else
-                {
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>Your Account Number Is Wrong</b> ",
-                        ParseMode.Html, cancellationToken: ct);
-                }
-                break;
-
-                #endregion
-        }
-        #endregion
-
-        #region Deposit
-
-        switch (user.DepositStep)
-        {
-            #region Custom Value
-
-            case 1:
-                var isValid = e.Text.TryParseAmount(out var parsedAmount);
-                if (isValid)
-                {
-                    await _dbController.UpdateUserAsync(new User()
-                    { UserId = e.From.Id.ToString(), DepositAmount = parsedAmount.ToString() });
-
-                    var continueCustomWithdrawKeyboard = new InlineKeyboardMarkup(new[]
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Entered Amount Is [{parsedAmount}$]</b>\n If Its Correct Please Press Continue",
+                            ParseMode.Html, replyMarkup: continueCustomWithdrawKeyboard, cancellationToken: ct);
+                    }
+                    else
                     {
-                        InlineKeyboardButton.WithCallbackData("Continue",$"Deposit:{parsedAmount}:{e.From.Id}"),
-                        InlineKeyboardButton.WithCallbackData("Cancel","Deposit:Cancel:-"),
-                    });
-                    await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Entered Amount Is [{parsedAmount}$]</b>\n If Its Correct Please Press Continue",
-                        ParseMode.Html, replyMarkup: continueCustomWithdrawKeyboard, cancellationToken: ct);
-                }
-                else
-                {
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>Please Enter A Valid Number.\n Amount Must Be More Than 10.0 $</b> ",
-                        ParseMode.Html, cancellationToken: ct);
-                }
-                break;
-
+                        await bot.SendTextMessageAsync(e.From.Id, "<b>Please Enter A Valid Number.\n Amount Must Be More Than 10.0 $</b> ",
+                            ParseMode.Html, cancellationToken: ct);
+                    }
+                    break;
 
                 #endregion
-        }
 
-        #endregion
+                #region AccountNumber Based On USD OR EUR
 
-        #region Questions
+                case 4:
+                    await bot.SendTextMessageAsync(e.From.Id, "<b>Please Wait Until We Check Your Account Number...</b> ",
+                        ParseMode.Html, cancellationToken: ct);
+                    if (CheckAccountNumber(user.WitchDrawPaymentMethod ?? "", e.Text ?? "", out var unit))
+                    {
+                        var msg = await bot.SendTextMessageAsync(e.From.Id, "<b>Your Account Number Has Been Verified</b> ",
+                            ParseMode.Html, cancellationToken: ct);
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawAccount = e.Text ?? "", WithDrawStep = 0 });
+                        await _apiController.WithdrawAsync(new ApiWithdrawModel()
+                        {
+                            account = e.Text ?? "",
+                            amount = user.WithDrawAmount ?? "",
+                            gateway = user.WitchDrawPaymentMethod ?? "",
+                            units = unit
 
-        if (e.Text.StartsWith("Q-"))
-        {
-            //Q-1: how are you bro ?
-            var splitQuestion = e.Text.Split('-'); // [0] q / [1] 1: how ...
-            var question = splitQuestion[1].Split(':')[0]; // [0]
+                        }, user.Token ?? "");
+                        await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "<b>Your Request Submitted SuccessFully!</b>", ParseMode.Html, cancellationToken: ct);
+                    }
+                    else
+                    {
+                        await bot.SendTextMessageAsync(e.From.Id, "<b>Your Account Number Is Wrong</b> ",
+                            ParseMode.Html, cancellationToken: ct);
+                    }
+                    break;
 
-            var getQuestion = await _questionController.GetQuestionByQuestionAsync(new Question() { Id = Convert.ToInt32(question) });
-            if (getQuestion is not null)
-            {
-                await bot.SendTextMessageAsync(e.From.Id,
-                    $"Your Question : {getQuestion.Question1}\n Here Is Your Answer:\n<i>{getQuestion.Answer}</i>", ParseMode.Html,
-                    cancellationToken: ct);
+                    #endregion
             }
-            else
-                await bot.SendTextMessageAsync(e.From.Id, "There Is No Answer Submitted For This Question!",
-                    cancellationToken: ct, replyMarkup: BackToMainMenuKeyboardMarkup);
-        }
-
-        #endregion
-
-        switch (e.Text)
-        {
-            #region Questions
-            case "Questions":
-                var questions = await _questionController.QuestionListByCountryAsync(user.Language ?? "");
-                if (questions.Count > 0)
-                {
-                    CreateKeyboardButtonQuestions(questions.QuestionNames(), out var replyKeyboardMarkup);
-                    await bot.SendTextMessageAsync(e.From.Id, "Here Is Popular Questions:", replyMarkup: replyKeyboardMarkup, cancellationToken: ct);
-                }
-                else
-                    await bot.SendTextMessageAsync(e.From.Id, "No Question Found For Your Language!",
-                        cancellationToken: ct);
-
-
-                break;
-            #endregion
-
-            #region Back To Main Menu
-
-            case "Back To Main Menu":
-                await bot.SendTextMessageAsync(e.From.Id, "You Are In Main : ", replyMarkup: user.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
-                break;
-
-            #endregion
-
-            #region Settings
-
-            case "Settings":
-                await bot.SendTextMessageAsync(e.From.Id, "Your Settings:", replyMarkup: SettingsKeyboardMarkup, cancellationToken: ct);
-                break;
-
-            #endregion
-
-            #region Premium Account
-            case "Premium Account":
-                var getDetails = await _apiController.PremiumDetailsAsync();
-
-                getDetails.ProcessSubscriptionDetails(out var downloadLimit,
-                    out var resolutions,
-                    out var subPrice,
-                    out var watchOn,
-                    out var canUseReferral, out var bonus, out var multiLevelPayment);
-
-                InlineKeyboardMarkup orderKeyboardMarkup = new(new[] { new[]
-                {
-                    InlineKeyboardButton.WithCallbackData("Order",$"Order:PremiumAccount:{e.Chat.Id}"),
-                }});
-                var premiumText = $"<b>Price:</b><i>{subPrice}$</i>\n<b>Resolution:</b> <i>{resolutions}</i>\n<b>Download:</b> <i>{downloadLimit}</i>\n<b>Watch On:</b> <i>{watchOn}</i>\n<b>Referral Ads:</b> <i>{canUseReferral}</i>\n<b>Language Subtitle:</b> <i>All</i>\n<b>Earn Money:</b> <i>{multiLevelPayment},{bonus}</i> ";
-                await bot.SendTextMessageAsync(e.Chat.Id, premiumText, ParseMode.Html, replyMarkup: orderKeyboardMarkup, cancellationToken: ct);
-                break;
-            #endregion
-
-            #region Support
-            case "Support":
-                var subMenuMessage = await bot.SendTextMessageAsync(e.Chat.Id, "<b> Support Sub-Menu :</b> ", ParseMode.Html, cancellationToken: ct);
-                var supportKeyBoardMarkup = new InlineKeyboardMarkup(new[] { new[]
-                {
-                    InlineKeyboardButton.WithCallbackData("Ticket", "Support:Ticket"),
-                    InlineKeyboardButton.WithCallbackData("Donate", "Support:Donate"),
-                    InlineKeyboardButton.WithCallbackData("Back",$"Back:MainMenu:{subMenuMessage.MessageId}:{subMenuMessage.Chat.Id}"),
-                } });
-                await bot.EditMessageReplyMarkupAsync(subMenuMessage.Chat.Id, subMenuMessage.MessageId, supportKeyBoardMarkup, ct);
-                break;
             #endregion
 
             #region Deposit
-            case "Deposit":
-                var valuesKeyboardMarkup = new InlineKeyboardMarkup(new[]
+
+            switch (user.DepositStep)
+            {
+                #region Custom Value
+                case 1:
+                    var isValid = e.Text.TryParseAmount(out var parsedAmount);
+                    if (isValid)
+                    {
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAmount = parsedAmount.ToString() });
+
+                        var continueCustomWithdrawKeyboard = new InlineKeyboardMarkup(new[]
+                        {
+                        InlineKeyboardButton.WithCallbackData("Continue",$"Deposit:{parsedAmount}:{e.From.Id}"),
+                        InlineKeyboardButton.WithCallbackData("Cancel","Deposit:Cancel:-"),
+                    });
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Entered Amount Is [{parsedAmount}$]</b>\n If Its Correct Please Press Continue", ParseMode.Html, replyMarkup: continueCustomWithdrawKeyboard, cancellationToken: ct);
+                    }
+                    else
+                    {
+                        await bot.SendTextMessageAsync(e.From.Id, "<b>Please Enter A Valid Number.\n Amount Must Be More Than 10.0 $</b> ",
+                            ParseMode.Html, cancellationToken: ct);
+                    }
+                    break;
+                #endregion
+
+                #region Manual Deposits
+
+                #region GotAccount-Getting Transaction ID
+                case 2:
+                    //TODO - Change this to account -manual account and trans id and send to new api - TODO
+                    var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"), });
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAccount = e.Text, DepositStep = 3 });
+                    await bot.SendTextMessageAsync(e.From.Id, $"```Please Enter Your Transaction/Operation ID: ```", ParseMode.MarkdownV2, replyMarkup: cancelKeyboard, cancellationToken: ct);
+                    break;
+                #endregion
+
+                #region GotTransactionID-Getting Final Confirm
+                case 3:
+                    // 
+                    var cancelDepositKeyboard = new InlineKeyboardMarkup(new[]
+                    {
+                        InlineKeyboardButton.WithCallbackData("Continue", $"ConfirmSiteAccDeposit:End:{e.Text??"-"}"),
+                        InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"),
+                    });
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 0 });
+                    await bot.SendTextMessageAsync(e.From.Id,
+                        $"<i>Here Is Your Check List:</i> \n If its True Please Press Confirm.\n<b>Account Number:{user.DepositAccount}\nDeposit Amount: {user.DepositAmount}$\nTransaction ID: {e.Text}\nAccount You Submitted For: {user.ManualAccount}</b>", ParseMode.Html, replyMarkup: cancelDepositKeyboard, cancellationToken: ct);
+                    break;
+                #endregion
+
+                #endregion
+            }
+
+            #endregion
+
+            #region Questions
+
+            if (e.Text?.StartsWith("Q-") ?? false)
+            {
+                //Q-1: how are you bro ?
+                var splitQuestion = e.Text.Split('-'); // [0] q / [1] 1: how ...
+                var question = splitQuestion[1].Split(':')[0]; // [0]
+
+                var getQuestion = await _questionController.GetQuestionByQuestionAsync(new Question() { Id = Convert.ToInt32(question) });
+                if (getQuestion is not null)
                 {
+                    await bot.SendTextMessageAsync(e.From.Id,
+                        $"Your Question : {getQuestion.Question1}\n Here Is Your Answer:\n<i>{getQuestion.Answer}</i>", ParseMode.Html,
+                        cancellationToken: ct);
+                }
+                else
+                    await bot.SendTextMessageAsync(e.From.Id, "There Is No Answer Submitted For This Question!",
+                        cancellationToken: ct, replyMarkup: BackToMainMenuKeyboardMarkup);
+            }
+
+            #endregion
+
+            #region PublicSteps
+
+            switch (user.PublicSteps)
+            {
+                #region Tracking Payment
+                case 1: 
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), PublicSteps = 0 });
+                    var pendingMessage =await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
+                    var results = await _apiController.CheckPaymentAsync(new ApiManualCheckPaymentModel() {payment_id = e.Text??""}, user.Token ?? "");
+                    await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"<i>Your Tracking Results Are Back:</i><b>{results?.data??"Nothing Found"}</b>", ParseMode.Html, cancellationToken: ct);
+                    
+                    break;
+                #endregion
+            }
+
+            #endregion
+
+            switch (e.Text)
+            {
+                #region Questions
+                case "Questions":
+                    var questions = await _questionController.QuestionListByCountryAsync(user.Language ?? "");
+                    if (questions.Count > 0)
+                    {
+                        CreateKeyboardButtonQuestions(questions.QuestionNames(), out var replyKeyboardMarkup);
+                        await bot.SendTextMessageAsync(e.From.Id, "Here Is Popular Questions:", replyMarkup: replyKeyboardMarkup, cancellationToken: ct);
+                    }
+                    else
+                        await bot.SendTextMessageAsync(e.From.Id, "No Question Found For Your Language!",
+                            cancellationToken: ct);
+
+
+                    break;
+                #endregion
+
+                #region Back To Main Menu
+
+                case "Back To Main Menu":
+                    await bot.SendTextMessageAsync(e.From.Id, "You Are In Main : ", replyMarkup: user.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
+                    break;
+
+                #endregion
+
+                #region Settings
+
+                case "Settings":
+                    await bot.SendTextMessageAsync(e.From.Id, "Your Settings:", replyMarkup: SettingsKeyboardMarkup, cancellationToken: ct);
+                    break;
+
+                #endregion
+
+                #region Premium Account
+                case "Premium Account":
+                    var getDetails = await _apiController.PremiumDetailsAsync();
+
+                    getDetails.ProcessSubscriptionDetails(out var downloadLimit,
+                        out var resolutions,
+                        out var subPrice,
+                        out var watchOn,
+                        out var canUseReferral, out var bonus, out var multiLevelPayment);
+
+                    InlineKeyboardMarkup orderKeyboardMarkup = new(new[] { new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Order",$"Order:PremiumAccount:{e.Chat.Id}"),
+                }});
+                    var premiumText = $"<b>Price:</b><i>{subPrice}$</i>\n<b>Resolution:</b> <i>{resolutions}</i>\n<b>Download:</b> <i>{downloadLimit}</i>\n<b>Watch On:</b> <i>{watchOn}</i>\n<b>Referral Ads:</b> <i>{canUseReferral}</i>\n<b>Language Subtitle:</b> <i>All</i>\n<b>Earn Money:</b> <i>{multiLevelPayment},{bonus}</i> ";
+                    await bot.SendTextMessageAsync(e.Chat.Id, premiumText, ParseMode.Html, replyMarkup: orderKeyboardMarkup, cancellationToken: ct);
+                    break;
+                #endregion
+
+                #region Support
+                case "Support":
+                    var subMenuMessage = await bot.SendTextMessageAsync(e.Chat.Id, "<b> Support Sub-Menu :</b> ", ParseMode.Html, cancellationToken: ct);
+                    var supportKeyBoardMarkup = new InlineKeyboardMarkup(new[] { new[] {
+                    InlineKeyboardButton.WithCallbackData("Ticket", "Support:Ticket"),
+                    InlineKeyboardButton.WithCallbackData("Donate", "Support:Donate"),
+                    InlineKeyboardButton.WithCallbackData("Tracking Payment", "Support:Track"),
+                } });
+                    await bot.EditMessageReplyMarkupAsync(subMenuMessage.Chat.Id, subMenuMessage.MessageId, supportKeyBoardMarkup, ct);
+                    break;
+                #endregion
+
+                #region Deposit
+                case "Deposit":
+                    var valuesKeyboardMarkup = new InlineKeyboardMarkup(new[]
+                    {
                     new []
                     {
                         InlineKeyboardButton.WithCallbackData("15 USD",$"Deposit:15:{e.Chat.Id}"),
@@ -1447,22 +1715,18 @@ public class Bot
                     new []
                     {
                         InlineKeyboardButton.WithCallbackData("Enter Custom Amount",$"Deposit:Custom:{e.Chat.Id}"),
-                    },
-                    new []
-                    {
                         InlineKeyboardButton.WithCallbackData("Cancel",$"Deposit:Cancel:-"),
-                    }
-                });
-                await bot.SendTextMessageAsync(e.Chat.Id, "<b>Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue :</b> ", ParseMode.Html, replyMarkup: valuesKeyboardMarkup, cancellationToken: ct);
-                break;
-            #endregion
+                    } });
+                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue :</b> ", ParseMode.Html, replyMarkup: valuesKeyboardMarkup, cancellationToken: ct);
+                    break;
+                #endregion
 
-            #region WithDraw
-            case "Withdraw":
-                if (!string.IsNullOrEmpty(user.WithDrawAmount) && !string.IsNullOrEmpty(user.WitchDrawPaymentMethod) && !string.IsNullOrEmpty(user.WithDrawAccount))
-                {
-                    var amountKeyboardMarkup = new InlineKeyboardMarkup(new[]
+                #region WithDraw
+                case "Withdraw":
+                    if (!string.IsNullOrEmpty(user.WithDrawAmount) && !string.IsNullOrEmpty(user.WitchDrawPaymentMethod) && !string.IsNullOrEmpty(user.WithDrawAccount))
                     {
+                        var amountKeyboardMarkup = new InlineKeyboardMarkup(new[]
+                        {
                         new[]
                         {
                             InlineKeyboardButton.WithCallbackData("10 USD",$"WithDraw:10:{e.Chat.Id}"),
@@ -1485,12 +1749,12 @@ public class Bot
                         }
 
                     });
-                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue :</b> \n (You Can Use The Last Option To Continue With Your Previous Method And Amount To Withdraw) ", ParseMode.Html, replyMarkup: amountKeyboardMarkup, cancellationToken: ct);
-                }
-                else
-                {
-                    var amountKeyboardMarkup = new InlineKeyboardMarkup(new[]
+                        await bot.SendTextMessageAsync(e.Chat.Id, "<b>Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue :</b> \n (You Can Use The Last Option To Continue With Your Previous Method And Amount To Withdraw) ", ParseMode.Html, replyMarkup: amountKeyboardMarkup, cancellationToken: ct);
+                    }
+                    else
                     {
+                        var amountKeyboardMarkup = new InlineKeyboardMarkup(new[]
+                        {
                         new[]
                         {
                             InlineKeyboardButton.WithCallbackData("10 USD",$"WithDraw:10:{e.Chat.Id}"),
@@ -1505,312 +1769,412 @@ public class Bot
                             InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"),
                         }
                      });
-                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue :</b> ", ParseMode.Html, replyMarkup: amountKeyboardMarkup, cancellationToken: ct);
-                }
-                break;
-            #endregion
-
-            #region Wallet
-
-            case "Wallet":
-                var getInfo = await _apiController.InfoAsync(user.Token ?? "");
-
-                var data = $"Balance: {getInfo.data.balance}$ \nAccount Number:` {getInfo.data.wallet_number} `".EscapeUnSupportChars();
-                await bot.SendTextMessageAsync(e.Chat.Id, data, ParseMode.MarkdownV2, cancellationToken: ct);
-                break;
-
-            #endregion
-
-            #region Referral Ads
-            case "Referral Ads":
-                try
-                {
-                    var getReferralInfo = await _apiController.GetReferralAdsInfoAsync(user.Token ?? "");
-                    var price = 6;
-                    if (getReferralInfo is not null)
-                    {
-                        price = getReferralInfo.data.price;
+                        await bot.SendTextMessageAsync(e.Chat.Id, "<b>Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue :</b> ", ParseMode.Html, replyMarkup: amountKeyboardMarkup, cancellationToken: ct);
                     }
-                    var referralAdsKeyboard = new InlineKeyboardMarkup(new[]
+                    break;
+                #endregion
+
+                #region Wallet
+
+                case "Wallet":
+                    var getInfo = await _apiController.InfoAsync(user.Token ?? "");
+                    if (getInfo is null)
+                        await bot.SendTextMessageAsync(e.Chat.Id, $"<b><i>Dear {e.Chat.Id}\n We Cant Get Your Info Right Now!\n Please Try Again Latter</i></b>", ParseMode.Html, cancellationToken: ct);
+                    else
                     {
+                        var data = $"Balance: {getInfo.data.balance}$ \nAccount Number:` {getInfo.data.wallet_number} `".EscapeUnSupportChars();
+                        await bot.SendTextMessageAsync(e.Chat.Id, data, ParseMode.MarkdownV2, cancellationToken: ct);
+                    }
+                    break;
+
+                #endregion
+
+                #region Referral Ads
+                case "Referral Ads":
+                    try
+                    {
+                        var getReferralInfo = await _apiController.GetReferralAdsInfoAsync(user.Token ?? "");
+                        var price = 6;
+                        if (getReferralInfo is not null)
+                        {
+                            price = getReferralInfo.data.price;
+                        }
+                        var referralAdsKeyboard = new InlineKeyboardMarkup(new[]
+                        {
                         new[]
                         {
                             InlineKeyboardButton.WithCallbackData($"{price} USD",$"Ref:Ads:Check:{price}"),
                             InlineKeyboardButton.WithCallbackData($"{price * 2} USD",$"Ref:Ads:Check:{price * 2}"),
-                        },
-                        new[]
-                        {
                             InlineKeyboardButton.WithCallbackData($"{price * 3} USD",$"Ref:Ads:Check:{price * 3}"),
                             InlineKeyboardButton.WithCallbackData($"{price * 4} USD",$"Ref:Ads:Check:{price * 4}"),
                             InlineKeyboardButton.WithCallbackData($"{price * 5} USD",$"Ref:Ads:Check:{price * 5}"),
-                        }
-                    });
-                    await bot.SendTextMessageAsync(e.Chat.Id, "Select Your Plan To Continue: ", replyMarkup: referralAdsKeyboard, cancellationToken: ct);
-                }
-                catch (Exception)
-                {
-                    await bot.SendTextMessageAsync(e.Chat.Id, "This Service Currently Is UnAvailable\n Please Try Again Latter! ", cancellationToken: ct);
-
-                }
-
-                break;
-            #endregion
-
-            #region Referral Link
-
-            case "Referral Link":
-                var checkSub = await _apiController.CheckSubscriptionsAsync(user.Token ?? "");
-                if (checkSub.message == "nothing found")
-                    await bot.SendTextMessageAsync(e.From.Id, "Please Buy A Subscription First!", cancellationToken: ct);
-                else
-                {
-                    var getLink = await _apiController.InfoAsync(user.Token ?? "");
-                    if (getLink is not null)
-                        await bot.SendTextMessageAsync(e.From.Id, $"Here Is Your Referral Token: `{getLink.data.link}`", ParseMode.MarkdownV2, cancellationToken: ct);
-                    else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Service Is Not Available.\n Please Try Again Latter!</b>", ParseMode.Html, cancellationToken: ct);
-
-                }
-                break;
-
-            #endregion
-
-            #region statistics
-            case "Statistics":
-                var getSummary = await _apiController.SummaryAsync(user.Token ?? "");
-                if (getSummary is not null)
-                {
-                    await bot.SendTextMessageAsync(e.From.Id,
-                        $"<b>Your Conduct Summary : </b>\n <b>Today Income:</b> <i>{getSummary.data.todayIncome}</i>\n<b>Week Income:</b> <i>{getSummary.data.weekIncome}</i>\n<b>Today Deposits:</b> <i>{getSummary.data.todayDeposits}</i>\n<b>Week Deposits:</b> <i>{getSummary.data.weekDeposits}</i>\n<b>SubSets Count:</b> <i>{getSummary.data.subsetsCount}</i>\n<b>Referrals Count:</b> <i>{getSummary.data.referralCount}</i>",
-                        ParseMode.Html, cancellationToken: ct);
-
-                }
-                else
-                {
-                    await bot.SendTextMessageAsync(e.From.Id, "<i>You Have No Activity In Record !</i>", ParseMode.Html,
-                        cancellationToken: ct);
-                }
-                break;
-            #endregion
-
-            #region History
-
-            case "History":
-                var getTransactions = await _apiController.TransactionsAsync(user.Token ?? "");
-                if (getTransactions.data.Count < 1)
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>No Transaction Found!</b>", ParseMode.Html, cancellationToken: ct);
-                else
-                {
-                    var sortedList = getTransactions.data.Take(10).OrderBy(p => p.type).ThenBy(p => p.id);
-                    var results = "";
-                    foreach (var trans in sortedList)
-                    {
-                        if (trans.mlp_user is not null)
-                            results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nLevel:{trans.level}\nDate:{trans.created_at}\n--------\n";
-                        if (trans.bonus)
-                            results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nDate:{trans.created_at} \n--------\n";
-                        if (trans.referral)
-                            results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nReferral Count: {trans.referral_count}\nRemaining Referral Count: {trans.remaining_referral_count}\nReferral Reward: {trans.referral_reward}\nDate:{trans.created_at} \n--------\n";
-                        else
-                            results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nDate:{trans.created_at} \n--------\n";
+                        } });
+                        await bot.SendTextMessageAsync(e.Chat.Id, "Select Your Plan To Continue: ", replyMarkup: referralAdsKeyboard, cancellationToken: ct);
                     }
-                    await bot.SendTextMessageAsync(e.From.Id, $"<b>{results}</b>", ParseMode.Html, cancellationToken: ct);
-                }
+                    catch (Exception)
+                    {
+                        await bot.SendTextMessageAsync(e.Chat.Id, "This Service Currently Is UnAvailable\n Please Try Again Latter! ", cancellationToken: ct);
 
-                break;
+                    }
+
+                    break;
+                #endregion
+
+                #region Referral Link
+
+                case "Referral Link":
+                    var checkSub = await _apiController.CheckSubscriptionsAsync(user.Token ?? "");
+                    if (checkSub.message == "nothing found")
+                        await bot.SendTextMessageAsync(e.From.Id, "Please Buy A Subscription First!", cancellationToken: ct);
+                    else
+                    {
+                        var getLink = await _apiController.InfoAsync(user.Token ?? "");
+                        if (getLink is not null)
+                            await bot.SendTextMessageAsync(e.From.Id, $"Here Is Your Referral Token: `{getLink.data.link}`", ParseMode.MarkdownV2, cancellationToken: ct);
+                        else
+                            await bot.SendTextMessageAsync(e.From.Id, $"<b>Service Is Not Available.\n Please Try Again Latter!</b>", ParseMode.Html, cancellationToken: ct);
+
+                    }
+                    break;
 
                 #endregion
+
+                #region statistics
+                case "Statistics":
+                    var getSummary = await _apiController.SummaryAsync(user.Token ?? "");
+                    if (getSummary is not null)
+                    {
+                        await bot.SendTextMessageAsync(e.From.Id,
+                            $"<b>Your Conduct Summary : </b>\n <b>Today Income:</b> <i>{getSummary.data.todayIncome}</i>\n<b>Week Income:</b> <i>{getSummary.data.weekIncome}</i>\n<b>Today Deposits:</b> <i>{getSummary.data.todayDeposits}</i>\n<b>Week Deposits:</b> <i>{getSummary.data.weekDeposits}</i>\n<b>SubSets Count:</b> <i>{getSummary.data.subsetsCount}</i>\n<b>Referrals Count:</b> <i>{getSummary.data.referralCount}</i>",
+                            ParseMode.Html, cancellationToken: ct);
+
+                    }
+                    else
+                    {
+                        await bot.SendTextMessageAsync(e.From.Id, "<i>You Have No Activity In Record !</i>", ParseMode.Html,
+                            cancellationToken: ct);
+                    }
+                    break;
+                #endregion
+
+                #region History
+                case "History":
+                    var getTransactions = await _apiController.TransactionsAsync(user.Token ?? "");
+                    if (getTransactions is null || getTransactions.data.Count < 1)
+                    {
+                        await bot.SendTextMessageAsync(e.From.Id, "<b>No Transaction Found!</b>", ParseMode.Html, cancellationToken: ct);
+                    }
+                    else
+                    {
+                        var sortedList = getTransactions.data.Take(10).OrderBy(p => p.type).ThenBy(p => p.id);
+                        var results = "";
+                        foreach (var trans in sortedList)
+                        {
+                            if (trans.mlp_user is not null)
+                                results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nLevel:{trans.level}\nDate:{trans.created_at}\n--------\n";
+                            if (trans.bonus)
+                                results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nDate:{trans.created_at} \n--------\n";
+                            if (trans.referral)
+                                results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nReferral Count: {trans.referral_count}\nRemaining Referral Count: {trans.remaining_referral_count}\nReferral Reward: {trans.referral_reward}\nDate:{trans.created_at} \n--------\n";
+                            else
+                                results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nDate:{trans.created_at} \n--------\n";
+                        }
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>{results}</b>", ParseMode.Html, cancellationToken: ct);
+
+                    }
+                    break;
+
+                    #endregion
+            }
+        }
+        catch (Exception exception)
+        {
+            await Extensions.Extensions.WriteLogAsync(exception);
+            Console.WriteLine(exception);
+            await bot.SendTextMessageAsync(e.From?.Id ?? e.Chat.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+
         }
     }
-    private async Task SettingAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct, User user)
+    private async Task SettingAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
     {
-        var splitData = e.Data.Split(":");
-        var settingType = splitData[1];
-        switch (settingType)
+        try
         {
-            #region Change Language
-            case "ChangeLang":
-                var languageKeyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList));
-                await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Select Your New Language Please : ", replyMarkup: languageKeyBoardMarkup, cancellationToken: ct);
-                break;
-            #endregion
+            if (e.Data is null || e.Message is null) return;
 
-            #region Logout
-            case "Logout":
-                if (splitData.Length > 2)
-                {
-                    var status = splitData[2];
-                    switch (status)
+            var splitData = e.Data.Split(":");
+            var settingType = splitData[1];
+            switch (settingType)
+            {
+                #region Change Language
+                case "ChangeLang":
+                    var languageKeyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList));
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Select Your New Language Please : ", replyMarkup: languageKeyBoardMarkup, cancellationToken: ct);
+                    break;
+                #endregion
+
+                #region Logout
+                case "Logout":
+                    if (splitData.Length > 2)
                     {
-                        case "Yes":
-                            var logOut = await _dbController.LogoutAsync(e.From.Id.ToString());
-                            if (logOut)
-                            {
-                                await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
-                                await bot.SendTextMessageAsync(e.Message.Chat.Id, "<b>You LoggedOut From System!</b>", ParseMode.Html, replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
-                            }
-                            else
-                            {
+                        var status = splitData[2];
+                        switch (status)
+                        {
+                            case "Yes":
+                                var logOut = await _dbController.LogoutAsync(e.From.Id.ToString());
+                                if (logOut)
+                                {
+                                    await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
+                                    await bot.SendTextMessageAsync(e.Message.Chat.Id, "<b>You LoggedOut From System!</b>", ParseMode.Html, replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
+                                }
+                                else
+                                {
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                        "<b>Something Wrong Happens\n Please Try Again Latter!</b>", cancellationToken: ct);
+                                }
+                                break;
+                            case "No":
                                 await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                    "<b>Something Wrong Happens\n Please Try Again Latter!</b>", cancellationToken: ct);
-                            }
-                            break;
-                        case "No":
-                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                "<b>You Canceled This Operation.\n Have A Great Day!</b>", ParseMode.Html, cancellationToken: ct);
-                            break;
+                                    "<b>You Canceled This Operation.\n Have A Great Day!</b>", ParseMode.Html, cancellationToken: ct);
+                                break;
+                        }
                     }
-                }
-                else
-                {
-                    var confirmLogoutKeyboard = new InlineKeyboardMarkup(new[]
-                {
+                    else
+                    {
+                        var confirmLogoutKeyboard = new InlineKeyboardMarkup(new[]
+                    {
                     InlineKeyboardButton.WithCallbackData("Yes","Setting:Logout:Yes"),
                     InlineKeyboardButton.WithCallbackData("Cancel","Setting:Logout:No")
                 });
-                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Are You Sure You Wanna Logout?",
-                        cancellationToken: ct, replyMarkup: confirmLogoutKeyboard);
-                }
-                break;
-                #endregion
+                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Are You Sure You Wanna Logout?",
+                            cancellationToken: ct, replyMarkup: confirmLogoutKeyboard);
+                    }
+                    break;
+                    #endregion
+            }
+        }
+        catch (Exception exception)
+        {
+            await Extensions.Extensions.WriteLogAsync(exception);
+            Console.WriteLine(exception);
+            await bot.SendTextMessageAsync(e.From.Id,
+                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
     }
     private async Task SupportAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct, User user)
     {
-        var splitData = e.Data.Split(":");
-        var areaType = splitData[1];
-        switch (areaType)
+        try
         {
-            #region Donate
-            case "Donate":
-                await bot.DeleteMessageAsync(e.From.Id, e.Message.MessageId, ct);
-                var donateKeyboardMarkup = new InlineKeyboardMarkup(new[]
-                {
+            if (e.Data is null || e.Message is null) return;
+
+            var splitData = e.Data.Split(":");
+            var areaType = splitData[1];
+            switch (areaType)
+            {
+                #region Donate
+                case "Donate":
+                    await bot.DeleteMessageAsync(e.From.Id, e.Message.MessageId, ct);
+                    var donateKeyboardMarkup = new InlineKeyboardMarkup(new[]
+                    {
                     new []
                     {
                         InlineKeyboardButton.WithCallbackData("5 USD","Support:ProcessDonate:5"),
                         InlineKeyboardButton.WithCallbackData("10 USD","Support:ProcessDonate:10"),
-                    },
-                    new []
-                    {
                         InlineKeyboardButton.WithCallbackData("25 USD","Support:ProcessDonate:25"),
                         InlineKeyboardButton.WithCallbackData("50 USD","Support:ProcessDonate:50"),
-                    },
-                    new []
-                    {
                         InlineKeyboardButton.WithCallbackData("100 USD","Support:ProcessDonate:100"),
-                    }
-
-                });
-                var getInfo = await _apiController.InfoAsync(user.Token ?? "");
-                await bot.SendTextMessageAsync(e.From.Id,
-                    $"Select A Value To Donate : \n (Your Current Balance Is : {getInfo?.data.balance} )", cancellationToken: ct, replyMarkup: donateKeyboardMarkup);
-                break;
-            #endregion
-
-            #region ProcessDonate
-            case "ProcessDonate":
-                //403 not enf money - 200/201 tnx  
-                var donate = await _apiController.DonateAsync(new ApiDonateModel() { amount = splitData[2] }, user.Token ?? "");
-                if (donate is not null)
-                {
-                    switch (donate.status)
+                    }, new []
                     {
-                        case 200 or 201 or 403:
-                            await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, $"<b>{donate.message}</b>", ParseMode.Html, cancellationToken: ct);
-                            break;
-                        default:
-                            await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, "Donate Service Is InActive!\n Please Try Again Latter", cancellationToken: ct);
-                            break;
-                    }
-                }
-
-                break;
-            #endregion
-
-            #region Ticket
-            case "Ticket":
-                if (splitData.Length > 2)
-                {
-                    switch (splitData[2])
-                    {
-                        case "Back":
-                            await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
-                            break;
-                    }
-                }
-                else
-                {
-                    var contactKeyboard = new InlineKeyboardMarkup(new[]
-                    { InlineKeyboardButton.WithUrl("Support", "https://t.me/MEXINAMITen"),InlineKeyboardButton.WithCallbackData("Cancel","Support:Ticket:Back")});
-                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                        "You Can Contact To Our Support From This Link :", replyMarkup: contactKeyboard, cancellationToken: ct);
-                }
-                break;
+                        InlineKeyboardButton.WithCallbackData("Cancel","Support:Back"),
+                    } });
+                    var getInfo = await _apiController.InfoAsync(user.Token ?? "");
+                    await bot.SendTextMessageAsync(e.From.Id,
+                        $"Select A Value To Donate : \n (Your Current Balance Is : {getInfo?.data.balance} )", cancellationToken: ct, replyMarkup: donateKeyboardMarkup);
+                    break;
                 #endregion
+
+                #region ProcessDonate
+                case "ProcessDonate":
+                    var donate = await _apiController.DonateAsync(new ApiDonateModel() { amount = splitData[2] }, user.Token ?? "");
+                    if (donate is not null)
+                    {
+                        switch (donate.status)
+                        {
+                            case 200 or 201 or 403:
+                                await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, $"<b>{donate.message}</b>", ParseMode.Html, cancellationToken: ct);
+                                break;
+                            default:
+                                await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, "Donate Service Is InActive!\n Please Try Again Latter", cancellationToken: ct);
+                                break;
+                        }
+                    }
+                    break;
+                #endregion
+
+                #region Ticket
+                case "Ticket":
+                    if (splitData.Length > 2)
+                    {
+                        switch (splitData[2])
+                        {
+                            case "Back":
+                                await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        var contactKeyboard = new InlineKeyboardMarkup(new[]
+                        { InlineKeyboardButton.WithUrl("Support", "https://t.me/MEXINAMITen"),InlineKeyboardButton.WithCallbackData("Cancel","Support:Ticket:Back")});
+                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                            "You Can Contact To Our Support From This Link :", replyMarkup: contactKeyboard, cancellationToken: ct);
+                    }
+                    break;
+                #endregion
+
+                #region Track
+                case "Track":
+                    var cancel = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Support:Back"), });
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "<b>Please Send Your Payment ID:</b>", ParseMode.Html, replyMarkup: cancel, cancellationToken: ct);
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), PublicSteps = 1 });
+                    break;
+                #endregion
+
+                #region Cancel
+                case "Back":
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                        "<i>Progress Has Been Canceled</i>", ParseMode.Html, cancellationToken: ct);
+                    break;
+                #endregion
+
+            }
         }
+        catch (Exception exception)
+        {
+            await Extensions.Extensions.WriteLogAsync(exception);
+            Console.WriteLine(exception);
+            await bot.SendTextMessageAsync(e.From.Id,
+                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+        }
+
     }
     private async Task ReferralAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct, User user)
     {
-        var splitData = e.Data.Split(":");
-        var refType = splitData[1];
-        switch (refType)
+        try
         {
-            #region Ads
-            case "Ads":
-                var adsType = splitData[2];
-                switch (adsType)
-                {
-                    #region Check
-                    case "Check":
-                        await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
-                        var getValue = Convert.ToInt32(splitData[3]);
-                        var continueAdsKeyboard = new InlineKeyboardMarkup(new[]
-                        {
+            if (e.Data is null || e.Message is null) return;
+
+            var splitData = e.Data.Split(":");
+            var refType = splitData[1];
+            switch (refType)
+            {
+                #region Ads
+                case "Ads":
+                    var adsType = splitData[2];
+                    switch (adsType)
+                    {
+                        #region Check
+                        case "Check":
+                            await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
+                            var getValue = Convert.ToInt32(splitData[3]);
+                            var continueAdsKeyboard = new InlineKeyboardMarkup(new[]
+                            {
                             InlineKeyboardButton.WithCallbackData("Continue",$"Ref:Ads:Finish:{getValue / 6}"),
                         });
-                        await bot.SendTextMessageAsync(e.From.Id,
-                            $"<b> Here Is Your CheckList: </b> \n<i>{getValue / 6} Premium Account {getValue} USD</i>",
-                            ParseMode.Html, cancellationToken: ct, replyMarkup: continueAdsKeyboard);
-                        break;
-                    #endregion
+                            await bot.SendTextMessageAsync(e.From.Id,
+                                $"<b> Here Is Your CheckList: </b> \n<i>{getValue / 6} Premium Account {getValue} USD</i>",
+                                ParseMode.Html, cancellationToken: ct, replyMarkup: continueAdsKeyboard);
+                            break;
+                        #endregion
 
-                    #region Finish
-                    case "Finish":
-                        try
-                        {
-                            await bot.DeleteMessageAsync(e.From.Id, e.Message.MessageId, ct);
-                            var count = splitData[3];
-                            var getResponse = await _apiController.BuyReferralAdsAsync(new ApiAdsModel() { persons = count }, user.Token ?? "");
-                            if (getResponse is null)
+                        #region Finish
+                        case "Finish":
+                            try
+                            {
+                                await bot.DeleteMessageAsync(e.From.Id, e.Message.MessageId, ct);
+                                var count = splitData[3];
+                                var getResponse = await _apiController.BuyReferralAdsAsync(new ApiAdsModel() { persons = count }, user.Token ?? "");
+                                if (getResponse is null)
+                                {
+                                    await bot.SendTextMessageAsync(e.From.Id,
+                                        $"<b>This Service Is InActive!\n Please Try Again Latter!</i>", ParseMode.Html,
+                                        cancellationToken: ct);
+                                }
+                                else
+                                    await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Payment Result:</b>\n <i>{getResponse.data}</i>", ParseMode.Html,
+                                        cancellationToken: ct);
+                            }
+                            catch (Exception)
                             {
                                 await bot.SendTextMessageAsync(e.From.Id,
-                                    $"<b>This Service Is InActive!\n Please Try Again Latter!</i>", ParseMode.Html,
-                                    cancellationToken: ct);
+                                    $"<b>We Got Some Problems Here!\nPlease Try Again Latter.\nIf Problem Still Resist Please Contact Support!</i>",
+                                    ParseMode.Html, cancellationToken: ct);
+
                             }
-                            else
-                                await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Payment Result:</b>\n <i>{getResponse.data}</i>", ParseMode.Html,
-                                    cancellationToken: ct);
-                        }
-                        catch (Exception)
-                        {
-                            await bot.SendTextMessageAsync(e.From.Id,
-                                $"<b>We Got Some Problems Here!\nPlease Try Again Latter.\nIf Problem Still Resist Please Contact Support!</i>",
-                                ParseMode.Html, cancellationToken: ct);
 
-                        }
+                            break;
+                            #endregion
+                    }
 
-                        break;
-                        #endregion
-                }
-
-                break;
-            #endregion
-
-            #region Link
-            case "Link":
-                break;
+                    break;
                 #endregion
+
+                #region Link
+                case "Link":
+                    break;
+                    #endregion
+            }
+        }
+        catch (Exception exception)
+        {
+            await Extensions.Extensions.WriteLogAsync(exception);
+            Console.WriteLine(exception);
+            await bot.SendTextMessageAsync(e.From.Id,
+                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+
+        }
+    }
+    private async Task IdentityAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct, User user)
+    {
+        try
+        {
+            if (e.Data is null || e.Message is null) return;
+
+            var splitData = e.Data.Split(":");
+            var identityTape = splitData[1];
+            switch (identityTape)
+            {
+                #region Register
+                case "Register":
+                    switch (splitData[2])
+                    {
+                        #region Finish Register
+                        case "ContinueWithOutLink":
+                            await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
+                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html,
+                                cancellationToken: ct);
+                            var emailPass = user.UserPass.Split(':');
+                            await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = "", has_invitation = "0", email = emailPass[0], password = emailPass[1] });
+                            break;
+                        #endregion
+
+                        #region Cancel
+                        case "CancelCleanStep":
+                            await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
+                            await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
+                            break;
+                            #endregion
+                    }
+                    break;
+                    #endregion
+            }
+        }
+        catch (Exception exception)
+        {
+            await Extensions.Extensions.WriteLogAsync(exception);
+            Console.WriteLine(exception);
+            await bot.SendTextMessageAsync(e.From.Id,
+                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
     }
     #endregion
