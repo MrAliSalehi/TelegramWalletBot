@@ -47,9 +47,9 @@ public static class Dependencies
         { Languages.Spanish ,new Dictionary<string, string>() { {"Welcome", "Bienvenidos"},{"Enter Your Name:", "Introduzca su nombre:" } }}
     };
 
-    public static string NewConnectionString(string user,string pass,string ip,string dbName,string instanceName) => $@"Server={ip}\{instanceName};Database={dbName};Integrated Security=True;Connect Timeout=30;User ID={user};Password={pass}";
+    public static string NewConnectionString(string user,string pass,string dbName) => $@"Server=.;Database={dbName};Integrated Security=True;Connect Timeout=30;User ID={user};Password={pass}";
 
-    public static string ConnectionString { get; set; } = @"Server=.\SQL2019;Database=TelegramWallet_Db;Integrated Security=True;Connect Timeout=30;User ID=bot;Password=jokerr123";
+    public static string ConnectionString { get; set; } = @"Server=.;Database=MexinamitBot;Integrated Security=True;Connect Timeout=30;User ID=BotUser;Password=PASARgad7745@@";
 
     public static List<string> StatusList => new() { "admin", "Admin", "owner", "Owner", "Member", "Administrator", "administrator", "Creator" };
     public static string ApiUrl => "https://mexinamit.ali-chv.com/api";
