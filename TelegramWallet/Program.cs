@@ -4,9 +4,9 @@ using TelegramWallet.Database.Models;
 var builder = WebApplication.CreateBuilder(args);
 var app =  builder.Build();
 app.UseHttpsRedirection();
-Console.WriteLine("db test");
-var canConnect = await new TelegramWallet_DbContext().Database.CanConnectAsync();
-Console.WriteLine($"done:{canConnect}");
+//Console.WriteLine("db test");
+//var canConnect = await new TelegramWallet_DbContext().Database.CanConnectAsync();
+//Console.WriteLine($"done:{canConnect}");
 //while (!canConnect)
 //{
 //    Console.WriteLine("Cant Connect To Db\nConnection Problem...");
