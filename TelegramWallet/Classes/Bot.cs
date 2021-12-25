@@ -79,7 +79,7 @@ public class Bot
     {
         new[] { new KeyboardButton(Dependencies.LangDictionary[UserLang]["Login"]), new KeyboardButton(Dependencies.LangDictionary[UserLang]["Register"]), },
         new[] { new KeyboardButton("Forget Password") },
-        new[] { new KeyboardButton("Forget UserName") }
+        new[] { new KeyboardButton("Forget User Name") }
     };
 
     private static readonly ReplyKeyboardMarkup IdentityKeyboardMarkup = new(ButtonsIdentity)
@@ -382,7 +382,7 @@ public class Bot
                     }
 
                     });
-                    await _dbController.UpdateUserAsync(new User(){UserId = e.From.Id.ToString(),DepositAmount = value});
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAmount = value });
                     await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, " Select Payment Method :", replyMarkup: continueKeyboardMarkup, cancellationToken: ct);
                 }
                 #endregion
@@ -839,14 +839,16 @@ public class Bot
                     if (!e.Text.Contains(':'))
                     {
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
-                        await bot.SendTextMessageAsync(e.From.Id, "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html, cancellationToken: ct);
+                        var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html, cancellationToken: ct);
                         //Todo : Api
                         if (getUser.UserPass is null or "")
                             await bot.SendTextMessageAsync(e.From.Id, "We Have problem With Storing Your Data \n Please Come Back Latter", cancellationToken: ct);
                         else
                         {
                             var emailPass = getUser.UserPass.Split(':');
-                            await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
+                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
+                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
+                                $"Your Request`s Result:\n{response.message}", cancellationToken: ct);
                         }
                     }
                     else
@@ -883,6 +885,13 @@ public class Bot
                     var registerKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 4 });
                     await bot.SendTextMessageAsync(e.Chat.Id, "<b>Enter An Email Please : </b>", ParseMode.Html, replyMarkup: registerKeyboard, cancellationToken: ct);
+                    break;
+                #endregion
+
+                #region ReStoring Data-NextUpdate 
+
+                case "Forget Password" or "Forget User Name":
+                    await bot.SendTextMessageAsync(e.From.Id, "<b>This Feature Is Coming Soon!</b>", ParseMode.Html, cancellationToken: ct);
                     break;
                     #endregion
 
@@ -1007,7 +1016,8 @@ public class Bot
     #endregion
 
     #region Methods
-    public async Task OwnerAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
+
+    private async Task OwnerAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
     {
         try
         {
@@ -1501,13 +1511,14 @@ public class Bot
         try
         {
             if (e.From is null || e.Text is null) return;
+
             if (e.Text.StartsWith("/start") && e.Text.Split(' ').Length >= 1)
             {
                 // /start payment_confirmPayment
                 var splitData = e.Text.Split('_');
                 var paymentId = splitData[1];
-                var pendingMessage =await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
-                var results =await _apiController.CheckPaymentAsync(new ApiManualCheckPaymentModel() { payment_id = paymentId }, user.Token ?? "");
+                var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
+                var results = await _apiController.CheckPaymentAsync(new ApiManualCheckPaymentModel() { payment_id = paymentId }, user.Token ?? "");
                 var verified = results.data.verified ? "Yes" : "No";
                 await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
                     $"Results Are Here :\n<b>Verified:{verified}\nOrder Id: {results.data.order_id}\n Amount:{results.data.amount}\nPayment ID:{results.data.payment_id}</b>",
@@ -2219,11 +2230,12 @@ public class Bot
                         #region Finish Register
                         case "ContinueWithOutLink":
                             await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
-                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html,
+                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html,
                                 cancellationToken: ct);
                             var emailPass = user.UserPass.Split(':');
-                            await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = "", has_invitation = "0", email = emailPass[0], password = emailPass[1] });
+                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = "", has_invitation = "0", email = emailPass[0], password = emailPass[1] });
+                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
+                                $"Your Request`s Result:\n{response.message}", cancellationToken: ct);
                             break;
                         #endregion
 
@@ -2246,5 +2258,6 @@ public class Bot
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
     }
+
     #endregion
 }

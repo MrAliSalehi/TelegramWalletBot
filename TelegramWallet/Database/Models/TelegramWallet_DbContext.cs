@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
+﻿using Microsoft.EntityFrameworkCore;
+using TelegramWallet.Classes;
 
 namespace TelegramWallet.Database.Models
 {
@@ -25,7 +23,7 @@ namespace TelegramWallet.Database.Models
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseSqlServer("Server=.\\SQL2019;Database=TelegramWallet_Db;Integrated Security=True;Connect Timeout=30;User ID=bot;Password=jokerr123");
+                optionsBuilder.UseSqlServer(Dependencies.ConnectionString);
             }
         }
 
