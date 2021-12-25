@@ -4,7 +4,7 @@ public static class Dependencies
 {
     public record BotInformation
     {
-        public static string Token => "5016105194:AAHzTZx51UwTilPSXmFD5YChY-J_Wxhr04c";
+        public static string Token => "5021311514:AAEPIeUMQnS9Srvs8GkxB6Md7lqryFzER0Y";
         public static string Id => "someTelegramWalletTestBot";
     }
 
