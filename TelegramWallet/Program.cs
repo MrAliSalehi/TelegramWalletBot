@@ -8,7 +8,7 @@ var canConnect = await new TelegramWallet_DbContext().Database.CanConnectAsync()
 while (!canConnect)
 {
     Console.WriteLine("Cant Connect To Db\n Connection Problem...");
-    Console.ReadKey();
+    Console.ReadLine();
     Console.Clear();
     Console.WriteLine("Creating Manual ConnectionString\nEnter Server Ip:");
     var serverIp = Console.ReadLine();
