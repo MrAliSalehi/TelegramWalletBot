@@ -49,7 +49,7 @@ public static class Dependencies
 
     public static string NewConnectionString(string user,string pass,string dbName) => $@"Server=.;Database={dbName};Integrated Security=True;Connect Timeout=30;User ID={user};Password={pass}";
 
-    public static string ConnectionString { get; set; } = @"Server=.;Database=MexinamitBot;Integrated Security=True;Connect Timeout=30;User ID=BotUser;Password=PASARgad7745@@";
+    public static string ConnectionString { get; set; } = @"Server=.;Database=MexinamitBot;Integrated Security=True;Connect Timeout=30;User ID=bot;Password=PASARgad7745@@";
 
     public static List<string> StatusList => new() { "admin", "Admin", "owner", "Owner", "Member", "Administrator", "administrator", "Creator" };
     public static string ApiUrl => "https://mexinamit.ali-chv.com/api";
