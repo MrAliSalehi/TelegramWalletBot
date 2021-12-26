@@ -1544,7 +1544,7 @@ public class Bot
         {
             if (e.From is null || e.Text is null) return;
 
-            if (e.Text.StartsWith("/start") && e.Text.Split(' ').Length > 2)
+            if (e.Text.StartsWith("/start") && e.Text.Split(' ').Length >= 2)
             {
                 // /start payment_confirmPayment
                 var splitData = e.Text.Split('_');
