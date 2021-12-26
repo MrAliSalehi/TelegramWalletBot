@@ -9,6 +9,7 @@ using TelegramWallet.Api.Models.ApiManualGateways;
 using TelegramWallet.Api.Models.ApiPmAccountData;
 using TelegramWallet.Api.Models.ApiReferral.ApiAds;
 using TelegramWallet.Api.Models.ApiRegister;
+using TelegramWallet.Api.Models.ApiSecurity.ApiSecurityEncrypt;
 using TelegramWallet.Api.Models.ApiSubscriptions;
 using TelegramWallet.Api.Models.ApiSummary;
 using TelegramWallet.Api.Models.ApiWithdraw;
@@ -388,5 +389,26 @@ public class ApiController
             return null;
         }
 
+    }
+    public async Task<ApiSecurityEncryptResponse?> EncryptionAsync(ApiSecurityEncryptModel model,string token)
+    {
+
+        try
+        {
+            var client = new RestClient(Dependencies.ApiUrl)
+            {
+                Authenticator = new JwtAuthenticator(token)
+            };
+            var request = new RestRequest("/encrypt");
+            request.LoadDefaultHeaders();
+            var response = await client.PostAsync<ApiSecurityEncryptResponse>(request);
+            return response;
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception);
+            await Extensions.WriteLogAsync(exception);
+            return null;
+        }
     }
 }

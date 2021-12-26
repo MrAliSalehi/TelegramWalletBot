@@ -8,6 +8,7 @@ using TelegramWallet.Api.Models.ApiLogin;
 using TelegramWallet.Api.Models.ApiManualGateways;
 using TelegramWallet.Api.Models.ApiReferral.ApiAds;
 using TelegramWallet.Api.Models.ApiRegister;
+using TelegramWallet.Api.Models.ApiSecurity.ApiSecurityEncrypt;
 using TelegramWallet.Api.Models.ApiWithdraw;
 using TelegramWallet.Api.Models.Donate;
 using TelegramWallet.Classes.DataBase;
@@ -180,6 +181,10 @@ public class Bot
     #region Handlers
     private async Task HandleUpdateAsync(ITelegramBotClient bot, Update e, CancellationToken ct)
     {
+        var isBlockedByUser = await SendChatActionAsync(bot, e, ct);
+        if (isBlockedByUser)
+            return;
+
         switch (e.Type)
         {
             case UpdateType.CallbackQuery when e.CallbackQuery != null:
@@ -498,8 +503,14 @@ public class Bot
                                 var createPayment = await _apiController.CreatePaymentAsync(getUser.Token ?? "");
                                 var currency = getUser.ManualAccount.StartsWith("U") ? "USD" : "EUR";
                                 var finalUrl = createPayment.data.payment_id;
-                                var urlKeyboard = new InlineKeyboardMarkup(new[] {
-                                    InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?payment={finalUrl}&currency={currency}&amount={getUser.DepositAmount}"), });
+                                var encrypt = await _apiController.EncryptionAsync(new ApiSecurityEncryptModel()
+                                    {
+                                        amount = getUser.DepositAmount??"",currency = currency,payment = finalUrl
+                                    }, getUser.Token ?? "");
+                                var urlKeyboard = new InlineKeyboardMarkup(new[]
+                                {
+                                    InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={encrypt.data}"),
+                                });
                                 await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Your Payment Has Been Created\n Continue With Link:", replyMarkup: urlKeyboard, cancellationToken: ct);
 
                             }
@@ -728,6 +739,7 @@ public class Bot
         }
         catch (Exception exception)
         {
+            await SendExToAdminAsync(exception, bot, ct);
             await Extensions.Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -994,8 +1006,8 @@ public class Bot
         {
             await Extensions.Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception.Message);
-            await bot.SendTextMessageAsync(e.Chat.Id,
-                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+            await bot.SendTextMessageAsync(e.Chat.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+            await SendExToAdminAsync(exception, bot, ct);
         }
 
     }
@@ -1017,6 +1029,24 @@ public class Bot
 
     #region Methods
 
+    private async Task<bool> SendChatActionAsync(ITelegramBotClient bot, Update e, CancellationToken ct)
+    {
+        var userId = (long)0;
+        if (e.CallbackQuery is not null)
+            userId = e.CallbackQuery.From.Id;
+        if (e.Message?.From != null)
+            userId = e.Message.From.Id;
+        try
+        {
+            await bot.SendChatActionAsync(userId, ChatAction.Typing, ct);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+
+    }
     private async Task OwnerAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
     {
         try
@@ -1031,6 +1061,7 @@ public class Bot
         catch (Exception exception)
         {
             Console.WriteLine(exception);
+            await SendExToAdminAsync(exception, bot, ct);
             await Extensions.Extensions.WriteLogAsync(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -1499,6 +1530,7 @@ public class Bot
         }
         catch (Exception exception)
         {
+            await SendExToAdminAsync(exception, bot, ct);
             await Extensions.Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
@@ -1520,8 +1552,7 @@ public class Bot
                 var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
                 var results = await _apiController.CheckPaymentAsync(new ApiManualCheckPaymentModel() { payment_id = paymentId }, user.Token ?? "");
                 var verified = results.data.verified ? "Yes" : "No";
-                await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
-                    $"Results Are Here :\n<b>Verified:{verified}\nOrder Id: {results.data.order_id}\n Amount:{results.data.amount}\nPayment ID:{results.data.payment_id}</b>",
+                await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"Results Are Here :\n<b>Verified:{verified}\nOrder Id: {results.data.order_id}\n Amount:{results.data.amount}\nPayment ID:{results.data.payment_id}</b>",
                     ParseMode.Html, cancellationToken: ct);
             }
 
@@ -1667,7 +1698,7 @@ public class Bot
                     break;
                     #endregion
 
-                    #endregion
+                #endregion
             }
 
             #endregion
@@ -1969,6 +2000,7 @@ public class Bot
         }
         catch (Exception exception)
         {
+            await SendExToAdminAsync(exception, bot, ct);
             await Extensions.Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From?.Id ?? e.Chat.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -2034,6 +2066,7 @@ public class Bot
         }
         catch (Exception exception)
         {
+            await SendExToAdminAsync(exception, bot, ct);
             await Extensions.Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
@@ -2130,6 +2163,7 @@ public class Bot
         }
         catch (Exception exception)
         {
+            await SendExToAdminAsync(exception, bot, ct);
             await Extensions.Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
@@ -2206,6 +2240,7 @@ public class Bot
         }
         catch (Exception exception)
         {
+            await SendExToAdminAsync(exception, bot, ct);
             await Extensions.Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
@@ -2252,12 +2287,16 @@ public class Bot
         }
         catch (Exception exception)
         {
+            await SendExToAdminAsync(exception, bot, ct);
             await Extensions.Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
     }
-
+    private static async Task SendExToAdminAsync(Exception exception, ITelegramBotClient bot,CancellationToken ct)
+    {
+        await bot.SendTextMessageAsync(1127927726, $"{exception.Message}\n{exception.StackTrace}", cancellationToken: ct);
+    }
     #endregion
 }
