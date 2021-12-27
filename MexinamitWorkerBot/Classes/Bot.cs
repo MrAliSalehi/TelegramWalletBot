@@ -497,16 +497,16 @@ public class Bot
                             {
                                 var createPayment = await _apiController.CreatePaymentAsync(getUser.Token ?? "");
                                 var currency = getUser.ManualAccount.StartsWith("U") ? "USD" : "EUR";
-                                var finalUrl = createPayment.data.payment_id;
+                                var finalUrl = createPayment?.data.payment_id;
                                 var encrypt = await _apiController.EncryptionAsync(new ApiSecurityEncryptModel()
                                 {
                                     amount = getUser.DepositAmount ?? "",
                                     currency = currency,
-                                    payment = finalUrl
+                                    payment = finalUrl??""
                                 }, getUser.Token ?? "");
                                 var urlKeyboard = new InlineKeyboardMarkup(new[]
                                 {
-                                    InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={encrypt.data}"),
+                                    InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={encrypt?.data}"),
                                 });
                                 await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Your Payment Has Been Created\n Continue With Link:", replyMarkup: urlKeyboard, cancellationToken: ct);
 
@@ -515,11 +515,11 @@ public class Bot
                             {
                                 var paymentStatus = await _apiController.ManualTransactionAsync(new ApiManualGatewaysModel()
                                 { amount = getUser.DepositAmount ?? "", account = getUser.DepositAccount ?? "", transaction_id = splitData[2], manual_account = getUser.ManualAccount ?? "" }, getUser.Token ?? "");
-                                if (paymentStatus.status is 200 or 201)
+                                if (paymentStatus?.status is 200 or 201)
                                     await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>Your Request`s Results Are Back :</i>\n<b>{paymentStatus?.data ?? "Nothing Found"}</b>", ParseMode.Html, cancellationToken: ct);
 
                                 else
-                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>We Got Some Problems:\n{paymentStatus.data}</i>", ParseMode.Html, cancellationToken: ct);
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>We Got Some Problems:\n{paymentStatus?.data}</i>", ParseMode.Html, cancellationToken: ct);
 
                             }
 
@@ -1088,7 +1088,7 @@ public class Bot
         }
         catch (TaskCanceledException taskCanceled)
         {
-            Console.WriteLine($"SomeTask Canceled Here : \n[{taskCanceled.Task.Exception}]\n[{taskCanceled.Message}]\n");
+            Console.WriteLine($"SomeTask Canceled Here : \n[{taskCanceled.Task?.Exception}]\n[{taskCanceled.Message}]\n");
         }
         catch (Exception exception)
         {
@@ -1137,7 +1137,7 @@ public class Bot
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"User Blocked Bot : {e.Message.From.Id}");
+            Console.WriteLine($"User Blocked Bot : {e.Message?.From?.Id}");
             await Extensions.WriteLogAsync(ex);
             return false;
         }
@@ -1467,7 +1467,7 @@ public class Bot
                                             var cancelQuestionMarkup = new InlineKeyboardMarkup(new[]
                                             {
                                                 InlineKeyboardButton.WithCallbackData("Cancel",
-                                                    $"Admin:QuestionCommands:Back:QuestionCommandsCleanSteps:{createdQuestion.Id}"),
+                                                    $"Admin:QuestionCommands:Back:QuestionCommandsCleanSteps:{createdQuestion?.Id}"),
                                             });
                                             await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), QuestionSteps = 1, CurrentQuestionLanguage = country });
                                             await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
@@ -1736,7 +1736,7 @@ public class Bot
             {
                 #region Custom Value
                 case 1:
-                    if (e.Text.Length > 20)
+                    if (e.Text?.Length > 20)
                     {
                         await bot.SendTextMessageAsync(e.From.Id, $"```This Amount Is Too Long!\n Maximum Length Is 17```", ParseMode.MarkdownV2, cancellationToken: ct);
                         return;
@@ -1778,7 +1778,7 @@ public class Bot
 
                 #region GotTransactionID-Getting Final Confirm
                 case 3:
-                    if (e.Text.Length > 20)
+                    if (e.Text?.Length > 20)
                     {
                         await bot.SendTextMessageAsync(e.From.Id, $"```This Transaction Id Is Too Long!\n Maximum Length Is 12```", ParseMode.MarkdownV2, cancellationToken: ct);
                         return;
@@ -2031,7 +2031,7 @@ public class Bot
 
                 case "Referral Link":
                     var checkSub = await _apiController.CheckSubscriptionsAsync(user.Token ?? "");
-                    if (checkSub.message == "nothing found")
+                    if (checkSub?.message == "nothing found")
                         await bot.SendTextMessageAsync(e.From.Id, "Please Buy A Subscription First!", cancellationToken: ct);
                     else
                     {

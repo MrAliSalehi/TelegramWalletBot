@@ -1,6 +1,5 @@
 ﻿using MexinamitWorkerBot.Database.Models;
 using Microsoft.EntityFrameworkCore;
-using TelegramWallet.Database.Models;
 
 namespace MexinamitWorkerBot.Classes.DataBase;
 
