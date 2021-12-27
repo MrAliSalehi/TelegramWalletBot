@@ -1,8 +1,17 @@
 using TelegramWallet.Classes;
+using TelegramWallet.Classes.Extensions;
+
 Console.WriteLine("Application Running");
-var builder = WebApplication.CreateBuilder(args);
-var app =  builder.Build();
-app.UseHttpsRedirection();
+//var builder = WebApplication.CreateBuilder(args);
+
+var host = Host.CreateDefaultBuilder(args)
+    .ConfigureServices(services =>
+    {
+        services.AddHostedService<Worker>();
+    })
+    .Build();
+
+
 
 Console.WriteLine("Executing Bot");
 await new Bot().RunAsync();
@@ -12,4 +21,4 @@ if (!File.Exists("Log.txt"))
     File.Create("Log.txt");
     Console.WriteLine("Log File Created");
 }
-app.Run();
+await host.RunAsync();
