@@ -185,8 +185,8 @@ public class Bot
         {
             case UpdateType.CallbackQuery when e.CallbackQuery != null:
                 var checkJoinCallBackSide = await ForceJoinAsync(bot, e, ct);
-                var callbackChatAction = await SendChatActionAsync(bot, e, ct, "callback");
-                if (callbackChatAction && checkJoinCallBackSide.Count == 0)
+                //var callbackChatAction = await SendChatActionAsync(bot, e, ct, "callback");
+                if (/*callbackChatAction && */checkJoinCallBackSide.Count == 0)
                     await HandleCallBackQueryAsync(bot, e.CallbackQuery, ct);
                 else
                 {
@@ -200,9 +200,9 @@ public class Bot
                 break;
             case UpdateType.Message when e.Message is { Text: { } }:
                 var checkJoinMessageSide = await ForceJoinAsync(bot, e, ct);
-                var messageChatAction = await SendChatActionAsync(bot, e, ct, "message");
+                //var messageChatAction = await SendChatActionAsync(bot, e, ct, "message");
 
-                if (messageChatAction && checkJoinMessageSide.Count == 0)
+                if (/*messageChatAction &&*/ checkJoinMessageSide.Count == 0)
                     await HandleMessageAsync(bot, e.Message, ct);
                 else
                 {
