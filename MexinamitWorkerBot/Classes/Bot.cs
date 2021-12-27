@@ -480,7 +480,7 @@ public class Bot : BackgroundService
                             {
                                 var createPayment = await _apiController.CreatePaymentAsync(getUser.Token ?? "");
                                 var currency = getUser.ManualAccount.StartsWith("U") ? "USD" : "EUR";
-                                var finalUrl = createPayment?.data.payment_id;
+                                var finalUrl = createPayment.data.payment_id;
                                 var encrypt = await _apiController.EncryptionAsync(new ApiSecurityEncryptModel()
                                 {
                                     amount = getUser.DepositAmount ?? "",
