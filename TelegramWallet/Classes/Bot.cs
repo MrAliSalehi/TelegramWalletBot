@@ -181,8 +181,8 @@ public class Bot
     #region Handlers
     private async Task HandleUpdateAsync(ITelegramBotClient bot, Update e, CancellationToken ct)
     {
-        var isBlockedByUser = await SendChatActionAsync(bot, e, ct);
-        if (isBlockedByUser)
+        var blockedByUser = await SendChatActionAsync(bot, e, ct);
+        if (!blockedByUser)
             return;
 
         switch (e.Type)
