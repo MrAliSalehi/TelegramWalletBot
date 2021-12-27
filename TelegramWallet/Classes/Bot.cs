@@ -54,7 +54,7 @@ public class Bot
         botClient.StartReceiving(HandleUpdateAsync, HandleErrorAsync, receiverOptions, cts.Token);
         var me = await botClient.GetMeAsync(cts.Token);
         Console.WriteLine($"Start listening for @{me.Username}");
-        Console.ReadLine();
+        //Console.ReadLine();
         cts.Cancel();
     }
     #endregion
