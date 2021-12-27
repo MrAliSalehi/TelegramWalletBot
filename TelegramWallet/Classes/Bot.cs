@@ -1029,7 +1029,7 @@ public class Bot
 
     #region Methods
 
-    private async Task<bool> SendChatActionAsync(ITelegramBotClient bot, Update e, CancellationToken ct)
+    private static async Task<bool> SendChatActionAsync(ITelegramBotClient bot, Update e, CancellationToken ct)
     {
         var userId = (long)0;
         if (e.CallbackQuery is not null)
@@ -1041,8 +1041,10 @@ public class Bot
             await bot.SendChatActionAsync(userId, ChatAction.Typing, ct);
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Console.WriteLine($"User Blocked Bot : {userId}");
+            await Extensions.Extensions.WriteLogAsync(ex);
             return false;
         }
 
