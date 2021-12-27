@@ -487,11 +487,17 @@ public class Bot : BackgroundService
                                     currency = currency,
                                     payment = finalUrl ?? ""
                                 }, getUser.Token ?? "");
-                                var urlKeyboard = new InlineKeyboardMarkup(new[]
+                                if (encrypt.status is 200 or 201)
                                 {
-                                    InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={encrypt?.data}"),
+
+                                    var urlKeyboard = new InlineKeyboardMarkup(new[]
+                                    {
+                                    InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={finalUrl}"),
                                 });
-                                await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Your Payment Has Been Created\n Continue With Link:", replyMarkup: urlKeyboard, cancellationToken: ct);
+                                    await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Your Payment Has Been Created\n Continue With Link:", replyMarkup: urlKeyboard, cancellationToken: ct);
+                                }
+                                else 
+                                    await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Sorry Right Now Our Service Is Not Available ", cancellationToken: ct);
 
                             }
                             else
@@ -2389,7 +2395,7 @@ public class Bot : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
 
-           
+
             // cts.Cancel();
         }
     }
