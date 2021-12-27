@@ -40,13 +40,6 @@ public class Bot : BackgroundService
 
     #endregion
 
-    #region Init
-    public async Task RunAsync(CancellationToken canceling)
-    {
-
-    }
-    #endregion
-
     #region Buttons
 
     #region Settings
@@ -2396,18 +2389,23 @@ public class Bot : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
 
-            var botClient = new TelegramBotClient(Dependencies.BotInformation.Token);
-            // using var cts = new CancellationTokenSource();
-            var receiverOptions = new ReceiverOptions
-            {
-                AllowedUpdates = { }
-            };
-            botClient.StartReceiving(HandleUpdateAsync, HandleErrorAsync, receiverOptions, stoppingToken);
-            var me = await botClient.GetMeAsync(stoppingToken);
-            Console.WriteLine($"Start listening for @{me.Username}");
-            // Console.ReadLine();
+           
             // cts.Cancel();
         }
     }
 
+    public override async Task StartAsync(CancellationToken cancellationToken)
+    {
+        var botClient = new TelegramBotClient(Dependencies.BotInformation.Token);
+        // using var cts = new CancellationTokenSource();
+        var receiverOptions = new ReceiverOptions
+        {
+            AllowedUpdates = { }
+        };
+        botClient.StartReceiving(HandleUpdateAsync, HandleErrorAsync, receiverOptions, cancellationToken);
+        var me = await botClient.GetMeAsync(cancellationToken);
+        Console.WriteLine($"Start listening for @{me.Username}");
+        // Console.ReadLine();
+        await base.StartAsync(cancellationToken);
+    }
 }
