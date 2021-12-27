@@ -10,12 +10,6 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddHostedService<Worker>();
     })
     .Build();
-
-
-
-Console.WriteLine("Executing Bot");
-await new Bot().RunAsync();
-Console.WriteLine("Bot Executed");
 if (!File.Exists("Log.txt"))
 {
     File.Create("Log.txt");

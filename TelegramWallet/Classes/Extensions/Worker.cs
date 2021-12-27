@@ -15,6 +15,9 @@ public class Worker : BackgroundService
         {
             _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
             await Task.Delay(1000, stoppingToken);
+            Console.WriteLine("Executing Bot");
+            await new Bot().RunAsync();
+            Console.WriteLine("Bot Executed");
         }
     }
 }
