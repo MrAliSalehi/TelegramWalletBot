@@ -488,7 +488,7 @@ public class Bot : BackgroundService
                                 }, getUser.Token ?? "");
                                 if (encrypt.status is 200 or 201)
                                 {
-                                    await bot.SendTextMessageAsync(1127927726, $"{Dependencies.PerfectMoneyApiUrl}?key={createPayment.data.payment_id}");
+                                    //await bot.SendTextMessageAsync(1127927726, $"{Dependencies.PerfectMoneyApiUrl}?key={createPayment.data.payment_id}");
                                     var urlKeyboard = new InlineKeyboardMarkup(new[]
                                     { InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={createPayment.data.payment_id}"), });
                                     await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Your Payment Has Been Created\n Continue With Link:", replyMarkup: urlKeyboard, cancellationToken: ct);
