@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiRegister;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiRegister;
 
 public class ApiRegisterModel
 {

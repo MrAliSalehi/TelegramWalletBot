@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiManualGateways;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiManualGateways;
 
 public class ApiManualCheckPaymentModel
 {

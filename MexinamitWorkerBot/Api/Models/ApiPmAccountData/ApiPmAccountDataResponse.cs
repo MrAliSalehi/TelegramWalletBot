@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiPmAccountData;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiPmAccountData;
 
 public class ApiPmAccountDataResponse
 {

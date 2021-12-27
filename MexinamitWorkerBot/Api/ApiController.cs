@@ -1,24 +1,23 @@
-﻿using Newtonsoft.Json;
+﻿using MexinamitWorkerBot.Api.Models;
+using MexinamitWorkerBot.Api.Models.ApiCreatePayment;
+using MexinamitWorkerBot.Api.Models.ApiDonate;
+using MexinamitWorkerBot.Api.Models.ApiGateways;
+using MexinamitWorkerBot.Api.Models.ApiLogin;
+using MexinamitWorkerBot.Api.Models.ApiManualGateways;
+using MexinamitWorkerBot.Api.Models.ApiPmAccountData;
+using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAds;
+using MexinamitWorkerBot.Api.Models.ApiRegister;
+using MexinamitWorkerBot.Api.Models.ApiSecurity.ApiSecurityEncrypt;
+using MexinamitWorkerBot.Api.Models.ApiSubscriptions;
+using MexinamitWorkerBot.Api.Models.ApiSummary;
+using MexinamitWorkerBot.Api.Models.ApiWithdraw;
+using MexinamitWorkerBot.Api.Models.Transactions;
+using MexinamitWorkerBot.Classes;
+using Newtonsoft.Json;
 using RestSharp;
 using RestSharp.Authenticators;
-using TelegramWallet.Api.Models;
-using TelegramWallet.Api.Models.ApiCreatePayment;
-using TelegramWallet.Api.Models.ApiGateways;
-using TelegramWallet.Api.Models.ApiLogin;
-using TelegramWallet.Api.Models.ApiManualGateways;
-using TelegramWallet.Api.Models.ApiPmAccountData;
-using TelegramWallet.Api.Models.ApiReferral.ApiAds;
-using TelegramWallet.Api.Models.ApiRegister;
-using TelegramWallet.Api.Models.ApiSecurity.ApiSecurityEncrypt;
-using TelegramWallet.Api.Models.ApiSubscriptions;
-using TelegramWallet.Api.Models.ApiSummary;
-using TelegramWallet.Api.Models.ApiWithdraw;
-using TelegramWallet.Api.Models.Donate;
-using TelegramWallet.Api.Models.Transactions;
-using TelegramWallet.Classes;
-using TelegramWallet.Classes.Extensions;
 
-namespace TelegramWallet.Api;
+namespace MexinamitWorkerBot.Api;
 
 public class ApiController
 {
@@ -390,7 +389,7 @@ public class ApiController
         }
 
     }
-    public async Task<ApiSecurityEncryptResponse?> EncryptionAsync(ApiSecurityEncryptModel model,string token)
+    public async Task<ApiSecurityEncryptResponse?> EncryptionAsync(ApiSecurityEncryptModel model, string token)
     {
 
         try

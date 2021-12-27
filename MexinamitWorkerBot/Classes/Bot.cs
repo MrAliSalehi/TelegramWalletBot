@@ -1,23 +1,21 @@
-﻿using Telegram.Bot;
+﻿using MexinamitWorkerBot.Api;
+using MexinamitWorkerBot.Api.Models.ApiDonate;
+using MexinamitWorkerBot.Api.Models.ApiLogin;
+using MexinamitWorkerBot.Api.Models.ApiManualGateways;
+using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAds;
+using MexinamitWorkerBot.Api.Models.ApiRegister;
+using MexinamitWorkerBot.Api.Models.ApiSecurity.ApiSecurityEncrypt;
+using MexinamitWorkerBot.Api.Models.ApiWithdraw;
+using MexinamitWorkerBot.Classes.DataBase;
+using MexinamitWorkerBot.Database.Models;
+using Telegram.Bot;
 using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using TelegramWallet.Api;
-using TelegramWallet.Api.Models.ApiLogin;
-using TelegramWallet.Api.Models.ApiManualGateways;
-using TelegramWallet.Api.Models.ApiReferral.ApiAds;
-using TelegramWallet.Api.Models.ApiRegister;
-using TelegramWallet.Api.Models.ApiSecurity.ApiSecurityEncrypt;
-using TelegramWallet.Api.Models.ApiWithdraw;
-using TelegramWallet.Api.Models.Donate;
-using TelegramWallet.Classes.DataBase;
-using TelegramWallet.Classes.Extensions;
-using TelegramWallet.Database.Models;
 using Message = Telegram.Bot.Types.Message;
-using User = TelegramWallet.Database.Models.User;
-
-namespace TelegramWallet.Classes;
+using User = MexinamitWorkerBot.Database.Models.User;
+namespace MexinamitWorkerBot.Classes;
 
 public class Bot
 {
@@ -739,7 +737,7 @@ public class Bot
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.Extensions.WriteLogAsync(exception);
+            await Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
             await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawStep = 0, DepositStep = 0 });
@@ -753,6 +751,7 @@ public class Bot
             if (e.Text is null or "" || e.From is null) return;
 
             #region Insert Db
+
             await _dbController.InsertNewUserAsync(new User()
             {
                 UserId = e.Chat.Id.ToString(),
@@ -772,144 +771,200 @@ public class Bot
                     "Sorry We Have Some Issues With Identify You,Please Try Again Latter", cancellationToken: ct);
                 return;
             }
+
             #region Registeration Area
+
             switch (getUser.LoginStep)
             {
                 #region Login
+
                 case 1:
                     if (!e.Text.Contains(':'))
                     {
-                        await bot.SendTextMessageAsync(e.Chat.Id, $"<b>Dear {e.Text} </b>\n Please Enter Your Password:", ParseMode.Html, cancellationToken: ct);
-                        await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
+                        await bot.SendTextMessageAsync(e.Chat.Id,
+                            $"<b>Dear {e.Text} </b>\n Please Enter Your Password:", ParseMode.Html,
+                            cancellationToken: ct);
+                        await _dbController.UpdateUserAsync(new User()
+                            { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your User Name Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id,
+                            $"<b>Your User Name Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html,
+                            cancellationToken: ct);
 
                     break;
                 case 2:
                     if (!e.Text.Contains(':'))
                     {
-                        var loginResponse = await _apiController.LoginAsync(new ApiLoginModel() { username = getUser.UserPass, password = e.Text });
+                        var loginResponse = await _apiController.LoginAsync(new ApiLoginModel()
+                            { username = getUser.UserPass, password = e.Text });
                         if (loginResponse is not null)
                         {
-                            await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
-                            await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html, replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
+                            await _dbController.UpdateUserAsync(new User()
+                                { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
+                            await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html,
+                                replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
                         }
                         else
                         {
-                            await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
-                            await bot.SendTextMessageAsync(e.Chat.Id, "<b>Wrong User Or Password,Please Try Again :</b> ", ParseMode.Html, replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
+                            await _dbController.UpdateUserAsync(new User()
+                                { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
+                            await bot.SendTextMessageAsync(e.Chat.Id,
+                                "<b>Wrong User Or Password,Please Try Again :</b> ", ParseMode.Html,
+                                replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
                         }
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>",
+                            ParseMode.Html, cancellationToken: ct);
 
                     break;
+
                 #endregion
 
                 #region RegisteredUsers
+
                 case 3:
                     await RegisteredAreaAsync(bot, e, ct, getUser);
                     break;
+
                 #endregion
 
                 #region Register
 
                 #region Getting Password
+
                 case 4:
                     if (!e.Text.Contains(':'))
                     {
-                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 5, UserPass = $"{e.Text}:" });
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Email :({e.Text}) Submitted!\n Now Please Enter A Strong Password: </b>", ParseMode.Html, cancellationToken: ct);
+                        await _dbController.UpdateUserAsync(new User()
+                            { UserId = e.From.Id.ToString(), LoginStep = 5, UserPass = $"{e.Text}:" });
+                        await bot.SendTextMessageAsync(e.From.Id,
+                            $"<b>Email :({e.Text}) Submitted!\n Now Please Enter A Strong Password: </b>",
+                            ParseMode.Html, cancellationToken: ct);
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Email Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Email Cannot Contains <i>(:)</i>.! </b>",
+                            ParseMode.Html, cancellationToken: ct);
+
                     break;
+
                 #endregion
 
                 #region Get Link-optional
+
                 case 5:
                     if (!e.Text.Contains(':'))
                     {
                         var continueRegister = new InlineKeyboardMarkup(new[]
                         {
-                        InlineKeyboardButton.WithCallbackData("Continue", "Identity:Register:ContinueWithOutLink"),
-                    });
-                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 6, UserPass = $"{getUser.UserPass}{e.Text}:" });
+                            InlineKeyboardButton.WithCallbackData("Continue", "Identity:Register:ContinueWithOutLink"),
+                        });
+                        await _dbController.UpdateUserAsync(new User()
+                        {
+                            UserId = e.From.Id.ToString(), LoginStep = 6, UserPass = $"{getUser.UserPass}{e.Text}:"
+                        });
                         await bot.SendTextMessageAsync(e.From.Id,
-                            $"<b>Got It!\n If You Have Any Invitation Link (From Site)\n Please Enter It Here:\n </b> <i>If No,Press Continue</i>", ParseMode.Html, replyMarkup: continueRegister, cancellationToken: ct);
+                            $"<b>Got It!\n If You Have Any Invitation Link (From Site)\n Please Enter It Here:\n </b> <i>If No,Press Continue</i>",
+                            ParseMode.Html, replyMarkup: continueRegister, cancellationToken: ct);
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>",
+                            ParseMode.Html, cancellationToken: ct);
 
                     break;
+
                 #endregion
 
                 #region Finish Register With Link
+
                 case 6:
                     if (!e.Text.Contains(':'))
                     {
-                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
-                        var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html, cancellationToken: ct);
+                        await _dbController.UpdateUserAsync(new User()
+                            { UserId = e.From.Id.ToString(), LoginStep = 0 });
+                        var pendingMessage = await bot.SendTextMessageAsync(e.From.Id,
+                            "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html,
+                            cancellationToken: ct);
                         //Todo : Api
                         if (getUser.UserPass is null or "")
-                            await bot.SendTextMessageAsync(e.From.Id, "We Have problem With Storing Your Data \n Please Come Back Latter", cancellationToken: ct);
+                            await bot.SendTextMessageAsync(e.From.Id,
+                                "We Have problem With Storing Your Data \n Please Come Back Latter",
+                                cancellationToken: ct);
                         else
                         {
                             var emailPass = getUser.UserPass.Split(':');
-                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
+                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel()
+                                { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
                             await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
                                 $"Your Request`s Result:\n{response.message}", cancellationToken: ct);
                         }
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>",
+                            ParseMode.Html, cancellationToken: ct);
 
                     break;
 
-                    #endregion
+                #endregion
 
-                    #endregion
+                #endregion
             }
+
             #endregion
 
             #region Public Messages
+
             switch (e.Text)
             {
                 #region Start
+
                 case "/start":
                     var keyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList));
-                    await bot.SendTextMessageAsync(e.Chat.Id, "Select Language Please : ", replyMarkup: keyBoardMarkup, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.Chat.Id, "Select Language Please : ", replyMarkup: keyBoardMarkup,
+                        cancellationToken: ct);
                     break;
+
                 #endregion
 
                 #region Login
+
                 case "Login":
-                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Please Enter Your User Name :</b>", ParseMode.Html, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Please Enter Your User Name :</b>", ParseMode.Html,
+                        cancellationToken: ct);
                     await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 1 });
                     await bot.DeleteMessageAsync(e.Chat.Id, e.MessageId, ct);
                     break;
+
                 #endregion
 
                 #region Register
+
                 case "Register":
-                    var registerKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+                    var registerKeyboard = new InlineKeyboardMarkup(new[]
+                        { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 4 });
-                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Enter An Email Please : </b>", ParseMode.Html, replyMarkup: registerKeyboard, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Enter An Email Please : </b>", ParseMode.Html,
+                        replyMarkup: registerKeyboard, cancellationToken: ct);
                     break;
+
                 #endregion
 
-                #region ReStoring Data-NextUpdate 
+                #region ReStoring Data-NextUpdate
 
                 case "Forget Password" or "Forget User Name":
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>This Feature Is Coming Soon!</b>", ParseMode.Html, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.From.Id, "<b>This Feature Is Coming Soon!</b>", ParseMode.Html,
+                        cancellationToken: ct);
                     break;
-                    #endregion
+
+                #endregion
 
             }
+
             #endregion
 
             #region Main-Owner
+
             //e.Chat.Id is 1127927726 or 1222521875
 
             var getAllAdmins = await _adminController.GetAllAdminsAsync();
@@ -919,43 +974,59 @@ public class Bot
                 var getAdmin = await _adminController.GetAdminAsync(e.From.Id.ToString());
 
                 #region CommandSteps
+
                 if (getAdmin.CommandSteps is not 0)
                 {
                     switch (getAdmin.CommandSteps)
                     {
                         #region CreateAdmin
+
                         case 1:
                             await _adminController.UpdateAdminAsync(new Admin()
-                            { CommandSteps = 0, UserId = e.From.Id.ToString() });
+                                { CommandSteps = 0, UserId = e.From.Id.ToString() });
                             var add = await _adminController.AddOwnerAsync(new Admin() { UserId = e.Text ?? "" });
                             if (add)
-                                await bot.SendTextMessageAsync(e.From.Id, $"User:[{e.Text}] Is Now Admin!", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+                                await bot.SendTextMessageAsync(e.From.Id, $"User:[{e.Text}] Is Now Admin!",
+                                    replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
                             else
-                                await bot.SendTextMessageAsync(e.From.Id, $"There Is A Problem During Adding This Admin!\n He Might Be Already Admin !", replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
+                                await bot.SendTextMessageAsync(e.From.Id,
+                                    $"There Is A Problem During Adding This Admin!\n He Might Be Already Admin !",
+                                    replyMarkup: AdminKeyboardMarkup, cancellationToken: ct);
                             break;
+
                         #endregion
 
                         #region Add Channel Id
 
                         case 2:
-                            await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), CommandSteps = 0 });
-                            var addChannel = await _forceJoinController.AddChannelAsync(new ForceJoinChannel() { ChId = e.Text ?? "" });
+                            await _adminController.UpdateAdminAsync(new Admin()
+                                { UserId = e.From.Id.ToString(), CommandSteps = 0 });
+                            var addChannel = await _forceJoinController.AddChannelAsync(new ForceJoinChannel()
+                                { ChId = e.Text ?? "" });
                             if (addChannel)
-                                await bot.SendTextMessageAsync(e.From.Id, "Channel Has Been Added SuccessFully", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
+                                await bot.SendTextMessageAsync(e.From.Id, "Channel Has Been Added SuccessFully",
+                                    replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
                             else
-                                await bot.SendTextMessageAsync(e.From.Id, "Channel Is Already In The List!", replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
+                                await bot.SendTextMessageAsync(e.From.Id, "Channel Is Already In The List!",
+                                    replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
 
                             break;
 
-                            #endregion
+                        #endregion
                     }
                 }
+
                 #endregion
 
                 #region Question
+
                 if (getAdmin.QuestionSteps is not 0)
                 {
-                    var cancelQuestioningMarkup = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Admin:QuestionCommands:Back:QuestionCommandsCleanSteps"), });
+                    var cancelQuestioningMarkup = new InlineKeyboardMarkup(new[]
+                    {
+                        InlineKeyboardButton.WithCallbackData("Cancel",
+                            "Admin:QuestionCommands:Back:QuestionCommandsCleanSteps"),
+                    });
                     switch (getAdmin.QuestionSteps)
                     {
                         #region Add Question
@@ -969,42 +1040,59 @@ public class Bot
                                     $"Your Question As : <i>{question}</i> \nAnd Your Answer As : <i>{answer}</i>\n Submitted In List!\n<b> Submit Another :\n Or Press Cancel</b>",
                                     ParseMode.Html, cancellationToken: ct, replyMarkup: cancelQuestioningMarkup);
                                 await _questionController.CreateQuestionAsync(new Question()
-                                { CreatorId = e.From.Id.ToString(), Answer = answer, Question1 = question, Language = getAdmin.CurrentQuestionLanguage });
+                                {
+                                    CreatorId = e.From.Id.ToString(), Answer = answer, Question1 = question,
+                                    Language = getAdmin.CurrentQuestionLanguage
+                                });
                             }
                             else
                             {
-                                await bot.SendTextMessageAsync(e.From.Id, $"Bad Syntax!\n Try Another! Or Press Cancel", cancellationToken: ct, replyMarkup: cancelQuestioningMarkup);
+                                await bot.SendTextMessageAsync(e.From.Id, $"Bad Syntax!\n Try Another! Or Press Cancel",
+                                    cancellationToken: ct, replyMarkup: cancelQuestioningMarkup);
                             }
+
                             break;
+
                         #endregion
 
                         #region Remove Question
+
                         case 2:
                             var remove = await _questionController.RemoveQuestionAsync(e.Text ?? "");
                             if (remove)
                             {
-                                await _adminController.UpdateAdminAsync(new Admin() { UserId = e.From.Id.ToString(), QuestionSteps = 0 });
-                                await bot.SendTextMessageAsync(e.From.Id, "Question Removed Successfully!", replyMarkup: QuestionCommandsMarkUp, cancellationToken: ct);
+                                await _adminController.UpdateAdminAsync(new Admin()
+                                    { UserId = e.From.Id.ToString(), QuestionSteps = 0 });
+                                await bot.SendTextMessageAsync(e.From.Id, "Question Removed Successfully!",
+                                    replyMarkup: QuestionCommandsMarkUp, cancellationToken: ct);
                             }
                             else
                             {
-                                await bot.SendTextMessageAsync(e.From.Id, "Question Not Found!\nIts Might Be Already Removed.", replyMarkup: cancelQuestioningMarkup, cancellationToken: ct);
+                                await bot.SendTextMessageAsync(e.From.Id,
+                                    "Question Not Found!\nIts Might Be Already Removed.",
+                                    replyMarkup: cancelQuestioningMarkup, cancellationToken: ct);
                             }
+
                             break;
-                            #endregion
+
+                        #endregion
 
                     }
                 }
+
                 #endregion
             }
 
 
             #endregion
         }
+        catch (TaskCanceledException taskCanceled)
+        {
+            Console.WriteLine($"SomeTask Canceled Here : \n[{taskCanceled.Task.Exception}]\n[{taskCanceled.Message}]\n");
+        }
         catch (Exception exception)
         {
-            await Extensions.Extensions.WriteLogAsync(exception);
-            Console.WriteLine(exception.Message);
+            await Extensions.WriteLogAsync(exception);
             await bot.SendTextMessageAsync(e.Chat.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
             await SendExToAdminAsync(exception, bot, ct);
         }
@@ -1019,9 +1107,7 @@ public class Bot
         //    _ => exception.ToString()
         //};
 
-        //Console.WriteLine(errorMessage);
-
-        await Extensions.Extensions.WriteLogAsync(exception);
+        await Extensions.WriteLogAsync(exception);
         Console.WriteLine(exception.Message);
     }
     #endregion
@@ -1052,7 +1138,7 @@ public class Bot
         catch (Exception ex)
         {
             Console.WriteLine($"User Blocked Bot : {e.Message.From.Id}");
-            await Extensions.Extensions.WriteLogAsync(ex);
+            await Extensions.WriteLogAsync(ex);
             return false;
         }
 
@@ -1072,7 +1158,7 @@ public class Bot
         {
             Console.WriteLine(exception);
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.Extensions.WriteLogAsync(exception);
+            await Extensions.WriteLogAsync(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
@@ -1541,7 +1627,7 @@ public class Bot
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.Extensions.WriteLogAsync(exception);
+            await Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -2011,7 +2097,7 @@ public class Bot
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.Extensions.WriteLogAsync(exception);
+            await Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From?.Id ?? e.Chat.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
 
@@ -2077,7 +2163,7 @@ public class Bot
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.Extensions.WriteLogAsync(exception);
+            await Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -2174,7 +2260,7 @@ public class Bot
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.Extensions.WriteLogAsync(exception);
+            await Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -2251,7 +2337,7 @@ public class Bot
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.Extensions.WriteLogAsync(exception);
+            await Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -2298,7 +2384,7 @@ public class Bot
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.Extensions.WriteLogAsync(exception);
+            await Extensions.WriteLogAsync(exception);
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);

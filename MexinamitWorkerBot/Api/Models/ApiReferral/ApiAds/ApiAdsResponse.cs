@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiReferral.ApiAds;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiReferral.ApiAds;
 
 public class ApiAdsResponse
 {

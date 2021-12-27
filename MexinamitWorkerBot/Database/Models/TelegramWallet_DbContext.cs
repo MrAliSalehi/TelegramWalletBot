@@ -1,7 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TelegramWallet.Classes;
+﻿using MexinamitWorkerBot.Classes;
+using Microsoft.EntityFrameworkCore;
 
-namespace TelegramWallet.Database.Models
+namespace MexinamitWorkerBot.Database.Models
 {
     public partial class TelegramWallet_DbContext : DbContext
     {

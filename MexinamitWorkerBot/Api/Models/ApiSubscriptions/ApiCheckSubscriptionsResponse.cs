@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiSubscriptions;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiSubscriptions;
 
 public class ApiCheckSubscriptionsResponse
 {

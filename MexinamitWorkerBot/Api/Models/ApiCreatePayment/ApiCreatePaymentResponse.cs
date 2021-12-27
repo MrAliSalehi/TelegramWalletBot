@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiCreatePayment;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiCreatePayment;
 
 public class ApiCreatePaymentResponse
 {

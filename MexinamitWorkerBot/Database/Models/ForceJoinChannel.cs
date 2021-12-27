@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace TelegramWallet.Database.Models
+namespace MexinamitWorkerBot.Database.Models
 {
     public partial class ForceJoinChannel
     {

@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.Donate;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiDonate;
 
 public class ApiDonateResponse
 {

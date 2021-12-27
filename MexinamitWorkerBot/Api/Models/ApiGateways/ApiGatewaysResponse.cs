@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiGateways;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiGateways;
 
 public class ApiGatewaysResponse
 {

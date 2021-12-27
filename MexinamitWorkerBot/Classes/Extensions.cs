@@ -1,7 +1,7 @@
-﻿using RestSharp;
-using TelegramWallet.Database.Models;
+﻿using MexinamitWorkerBot.Database.Models;
+using RestSharp;
 
-namespace TelegramWallet.Classes.Extensions;
+namespace MexinamitWorkerBot.Classes;
 
 public static class Extensions
 {
@@ -92,6 +92,7 @@ public static class Extensions
     }
     public static async Task WriteLogAsync(Exception exception)
     {
+        Console.WriteLine(exception.Message);
         await using var write = new StreamWriter("\\Log.txt", true);
         await write.WriteLineAsync($"--TIME[{DateTime.Now}]-ERROR[{exception}] MESSAGE[{exception.Message}]--");
     }

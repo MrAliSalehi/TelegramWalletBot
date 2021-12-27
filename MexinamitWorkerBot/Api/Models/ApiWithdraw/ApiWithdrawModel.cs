@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiWithdraw;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiWithdraw;
 
 public class ApiWithdrawModel
 {

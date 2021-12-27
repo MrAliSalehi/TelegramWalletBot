@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiLogin;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiLogin;
 
 public class ApiLoginResponse
 {

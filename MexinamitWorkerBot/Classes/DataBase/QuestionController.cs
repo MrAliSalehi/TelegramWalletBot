@@ -1,7 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TelegramWallet.Database.Models;
+﻿using MexinamitWorkerBot.Database.Models;
+using Microsoft.EntityFrameworkCore;
 
-namespace TelegramWallet.Classes.DataBase;
+namespace MexinamitWorkerBot.Classes.DataBase;
 
 public class QuestionController
 {
@@ -35,8 +35,8 @@ public class QuestionController
         }
         catch (Exception e)
         {
-                Console.WriteLine(e);
-                return new Question();
+            Console.WriteLine(e);
+            return new Question();
         }
     }
     public async Task<List<Question>> QuestionListByCountryAsync(string country)
@@ -58,7 +58,7 @@ public class QuestionController
         try
         {
             await using var context = new TelegramWallet_DbContext();
-            var findQuestion = await context.Questions.SingleOrDefaultAsync(p=>p.Id == Convert.ToInt32(id));
+            var findQuestion = await context.Questions.SingleOrDefaultAsync(p => p.Id == Convert.ToInt32(id));
             context.Questions.Remove(findQuestion);
             await context.SaveChangesAsync();
             return true;

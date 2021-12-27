@@ -1,4 +1,4 @@
-using TelegramWallet.Classes;
+using MexinamitWorkerBot.Classes;
 
 namespace MexinamitWorkerBot
 {

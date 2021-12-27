@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MexinamitWorkerBot.Database.Models;
+using Microsoft.EntityFrameworkCore;
 using TelegramWallet.Database.Models;
 
-namespace TelegramWallet.Classes.DataBase;
+namespace MexinamitWorkerBot.Classes.DataBase;
 
 public class AdminController
 {

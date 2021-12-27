@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiSummary;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiSummary;
 
 public class ApiSummaryResponse
 {

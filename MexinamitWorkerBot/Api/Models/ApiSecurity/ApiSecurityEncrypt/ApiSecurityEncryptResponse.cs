@@ -1,4 +1,4 @@
-﻿namespace TelegramWallet.Api.Models.ApiSecurity.ApiSecurityEncrypt;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiSecurity.ApiSecurityEncrypt;
 
 public class ApiSecurityEncryptResponse
 {

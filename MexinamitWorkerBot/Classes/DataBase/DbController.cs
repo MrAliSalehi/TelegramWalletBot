@@ -1,7 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TelegramWallet.Database.Models;
+﻿using MexinamitWorkerBot.Database.Models;
+using Microsoft.EntityFrameworkCore;
 
-namespace TelegramWallet.Classes.DataBase;
+namespace MexinamitWorkerBot.Classes.DataBase;
 
 public class DbController
 {
@@ -29,7 +29,7 @@ public class DbController
             if (findUser is null) return false;
             findUser.Token = null;
             findUser.Language = null;
-            findUser.UserPass =null;
+            findUser.UserPass = null;
             findUser.LoginStep = 0;
             findUser.WithDrawStep = 0;
             findUser.DepositAmount = null;

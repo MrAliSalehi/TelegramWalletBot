@@ -1,7 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TelegramWallet.Database.Models;
+﻿using MexinamitWorkerBot.Database.Models;
+using Microsoft.EntityFrameworkCore;
 
-namespace TelegramWallet.Classes.DataBase;
+namespace MexinamitWorkerBot.Classes.DataBase;
 
 public class ForceJoinController
 {
@@ -25,7 +25,7 @@ public class ForceJoinController
         try
         {
             await using var db = new TelegramWallet_DbContext();
-            var searchChannel = await db.ForceJoinChannels.AnyAsync(p=>p.ChId == channel.ChId);
+            var searchChannel = await db.ForceJoinChannels.AnyAsync(p => p.ChId == channel.ChId);
             if (searchChannel) return false;
             await db.ForceJoinChannels.AddAsync(channel);
             await db.SaveChangesAsync();
