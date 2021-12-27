@@ -22,7 +22,7 @@ namespace MexinamitWorkerBot
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                await botClient.RunAsync();
+                await botClient.RunAsync(stoppingToken);
                 //_logger.Log(LogLevel.Information,"Bot Is Running");
                 //await Task.Delay(60 * 1000, stoppingToken);
             }
