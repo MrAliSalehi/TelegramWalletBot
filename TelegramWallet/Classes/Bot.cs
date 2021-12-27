@@ -181,16 +181,12 @@ public class Bot
     #region Handlers
     private async Task HandleUpdateAsync(ITelegramBotClient bot, Update e, CancellationToken ct)
     {
-        var blockedByUser = await SendChatActionAsync(bot, e, ct);
-        if (!blockedByUser)
-            return;
-
         switch (e.Type)
         {
             case UpdateType.CallbackQuery when e.CallbackQuery != null:
                 var checkJoinCallBackSide = await ForceJoinAsync(bot, e, ct);
-
-                if (checkJoinCallBackSide.Count == 0)
+                var callbackChatAction = await SendChatActionAsync(bot, e, ct, "callback");
+                if (callbackChatAction && checkJoinCallBackSide.Count == 0)
                     await HandleCallBackQueryAsync(bot, e.CallbackQuery, ct);
                 else
                 {
@@ -204,8 +200,9 @@ public class Bot
                 break;
             case UpdateType.Message when e.Message is { Text: { } }:
                 var checkJoinMessageSide = await ForceJoinAsync(bot, e, ct);
+                var messageChatAction = await SendChatActionAsync(bot, e, ct, "message");
 
-                if (checkJoinMessageSide.Count == 0)
+                if (messageChatAction && checkJoinMessageSide.Count == 0)
                     await HandleMessageAsync(bot, e.Message, ct);
                 else
                 {
@@ -504,9 +501,11 @@ public class Bot
                                 var currency = getUser.ManualAccount.StartsWith("U") ? "USD" : "EUR";
                                 var finalUrl = createPayment.data.payment_id;
                                 var encrypt = await _apiController.EncryptionAsync(new ApiSecurityEncryptModel()
-                                    {
-                                        amount = getUser.DepositAmount??"",currency = currency,payment = finalUrl
-                                    }, getUser.Token ?? "");
+                                {
+                                    amount = getUser.DepositAmount ?? "",
+                                    currency = currency,
+                                    payment = finalUrl
+                                }, getUser.Token ?? "");
                                 var urlKeyboard = new InlineKeyboardMarkup(new[]
                                 {
                                     InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={encrypt.data}"),
@@ -1029,21 +1028,30 @@ public class Bot
 
     #region Methods
 
-    private static async Task<bool> SendChatActionAsync(ITelegramBotClient bot, Update e, CancellationToken ct)
+    private static async Task<bool> SendChatActionAsync(ITelegramBotClient bot, Update e, CancellationToken ct, string type)
     {
-        var userId = (long)0;
-        if (e.CallbackQuery is not null)
-            userId = e.CallbackQuery.From.Id;
-        if (e.Message?.From != null)
-            userId = e.Message.From.Id;
         try
         {
-            await bot.SendChatActionAsync(userId, ChatAction.Typing, ct);
-            return true;
+            switch (type)
+            {
+                case "callback":
+                    if (e.CallbackQuery is null)
+                        return false;
+                    await bot.SendChatActionAsync(e.CallbackQuery.From.Id, ChatAction.Typing, ct);
+                    return true;
+
+                case "message":
+                    if (e.Message?.From is null)
+                        return false;
+                    await bot.SendChatActionAsync(e.Message.From.Id, ChatAction.Typing, ct);
+                    return true;
+                default:
+                    return false;
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"User Blocked Bot : {userId}");
+            Console.WriteLine($"User Blocked Bot : {e.Message.From.Id}");
             await Extensions.Extensions.WriteLogAsync(ex);
             return false;
         }
@@ -1700,7 +1708,7 @@ public class Bot
                     break;
                     #endregion
 
-                #endregion
+                    #endregion
             }
 
             #endregion
@@ -2296,7 +2304,7 @@ public class Bot
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
     }
-    private static async Task SendExToAdminAsync(Exception exception, ITelegramBotClient bot,CancellationToken ct)
+    private static async Task SendExToAdminAsync(Exception exception, ITelegramBotClient bot, CancellationToken ct)
     {
         await bot.SendTextMessageAsync(1127927726, $"{exception.Message}\n{exception.StackTrace}", cancellationToken: ct);
     }
