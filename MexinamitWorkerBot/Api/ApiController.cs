@@ -399,7 +399,7 @@ public class ApiController
                 Authenticator = new JwtAuthenticator(token)
             };
             var request = new RestRequest("/encrypt");
-            request.LoadDefaultHeaders();
+            request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(model));
             var response = await client.PostAsync<ApiSecurityEncryptResponse>(request);
             return response;
         }

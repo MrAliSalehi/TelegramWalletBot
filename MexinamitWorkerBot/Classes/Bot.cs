@@ -491,9 +491,7 @@ public class Bot : BackgroundService
                                 {
 
                                     var urlKeyboard = new InlineKeyboardMarkup(new[]
-                                    {
-                                    InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={finalUrl}"),
-                                });
+                                    { InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={finalUrl}"), });
                                     await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Your Payment Has Been Created\n Continue With Link:", replyMarkup: urlKeyboard, cancellationToken: ct);
                                 }
                                 else 

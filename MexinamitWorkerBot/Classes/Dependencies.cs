@@ -53,5 +53,5 @@ public static class Dependencies
     // is main
     public static List<string> StatusList => new() { "admin", "Admin", "owner", "Owner", "Member", "Administrator", "administrator", "Creator" };
     public static string ApiUrl => "https://mexinamit.ali-chv.com/api";
-    public static string PerfectMoneyApiUrl => "https://mexinamit.com/gateways/prefect-money";
+    public static string PerfectMoneyApiUrl => "https://mexinamit.com/gateways/perfect-money";
 }
