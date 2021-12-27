@@ -14,7 +14,7 @@ namespace MexinamitWorkerBot
         public override async Task StartAsync(CancellationToken cancellationToken)
         {
             botClient = new Bot();
-            await botClient.RunAsync();
+            
             await base.StartAsync(cancellationToken);
         }
 
@@ -22,8 +22,9 @@ namespace MexinamitWorkerBot
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                _logger.Log(LogLevel.Information,"Bot Is Running");
-                await Task.Delay(60 * 1000, stoppingToken);
+                await botClient.RunAsync();
+                //_logger.Log(LogLevel.Information,"Bot Is Running");
+                //await Task.Delay(60 * 1000, stoppingToken);
             }
         }
     }

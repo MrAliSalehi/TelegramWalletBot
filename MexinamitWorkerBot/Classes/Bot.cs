@@ -502,7 +502,7 @@ public class Bot
                                 {
                                     amount = getUser.DepositAmount ?? "",
                                     currency = currency,
-                                    payment = finalUrl??""
+                                    payment = finalUrl ?? ""
                                 }, getUser.Token ?? "");
                                 var urlKeyboard = new InlineKeyboardMarkup(new[]
                                 {
@@ -746,6 +746,7 @@ public class Bot
     private async Task HandleMessageAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
     {
         Console.WriteLine($"Message: '{e.Chat.Id}' from :[{e.Text}].");
+       
         try
         {
             if (e.Text is null or "" || e.From is null) return;
@@ -785,7 +786,7 @@ public class Bot
                             $"<b>Dear {e.Text} </b>\n Please Enter Your Password:", ParseMode.Html,
                             cancellationToken: ct);
                         await _dbController.UpdateUserAsync(new User()
-                            { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
+                        { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
                     }
                     else
                         await bot.SendTextMessageAsync(e.From.Id,
@@ -797,18 +798,18 @@ public class Bot
                     if (!e.Text.Contains(':'))
                     {
                         var loginResponse = await _apiController.LoginAsync(new ApiLoginModel()
-                            { username = getUser.UserPass, password = e.Text });
+                        { username = getUser.UserPass, password = e.Text });
                         if (loginResponse is not null)
                         {
                             await _dbController.UpdateUserAsync(new User()
-                                { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
+                            { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
                             await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html,
                                 replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
                         }
                         else
                         {
                             await _dbController.UpdateUserAsync(new User()
-                                { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
+                            { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
                             await bot.SendTextMessageAsync(e.Chat.Id,
                                 "<b>Wrong User Or Password,Please Try Again :</b> ", ParseMode.Html,
                                 replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
@@ -838,7 +839,7 @@ public class Bot
                     if (!e.Text.Contains(':'))
                     {
                         await _dbController.UpdateUserAsync(new User()
-                            { UserId = e.From.Id.ToString(), LoginStep = 5, UserPass = $"{e.Text}:" });
+                        { UserId = e.From.Id.ToString(), LoginStep = 5, UserPass = $"{e.Text}:" });
                         await bot.SendTextMessageAsync(e.From.Id,
                             $"<b>Email :({e.Text}) Submitted!\n Now Please Enter A Strong Password: </b>",
                             ParseMode.Html, cancellationToken: ct);
@@ -862,7 +863,9 @@ public class Bot
                         });
                         await _dbController.UpdateUserAsync(new User()
                         {
-                            UserId = e.From.Id.ToString(), LoginStep = 6, UserPass = $"{getUser.UserPass}{e.Text}:"
+                            UserId = e.From.Id.ToString(),
+                            LoginStep = 6,
+                            UserPass = $"{getUser.UserPass}{e.Text}:"
                         });
                         await bot.SendTextMessageAsync(e.From.Id,
                             $"<b>Got It!\n If You Have Any Invitation Link (From Site)\n Please Enter It Here:\n </b> <i>If No,Press Continue</i>",
@@ -882,7 +885,7 @@ public class Bot
                     if (!e.Text.Contains(':'))
                     {
                         await _dbController.UpdateUserAsync(new User()
-                            { UserId = e.From.Id.ToString(), LoginStep = 0 });
+                        { UserId = e.From.Id.ToString(), LoginStep = 0 });
                         var pendingMessage = await bot.SendTextMessageAsync(e.From.Id,
                             "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html,
                             cancellationToken: ct);
@@ -895,7 +898,7 @@ public class Bot
                         {
                             var emailPass = getUser.UserPass.Split(':');
                             var response = await _apiController.RegisterUserAsync(new ApiRegisterModel()
-                                { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
+                            { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
                             await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
                                 $"Your Request`s Result:\n{response.message}", cancellationToken: ct);
                         }
@@ -906,9 +909,9 @@ public class Bot
 
                     break;
 
-                #endregion
+                    #endregion
 
-                #endregion
+                    #endregion
             }
 
             #endregion
@@ -957,7 +960,7 @@ public class Bot
                         cancellationToken: ct);
                     break;
 
-                #endregion
+                    #endregion
 
             }
 
@@ -983,7 +986,7 @@ public class Bot
 
                         case 1:
                             await _adminController.UpdateAdminAsync(new Admin()
-                                { CommandSteps = 0, UserId = e.From.Id.ToString() });
+                            { CommandSteps = 0, UserId = e.From.Id.ToString() });
                             var add = await _adminController.AddOwnerAsync(new Admin() { UserId = e.Text ?? "" });
                             if (add)
                                 await bot.SendTextMessageAsync(e.From.Id, $"User:[{e.Text}] Is Now Admin!",
@@ -1000,9 +1003,9 @@ public class Bot
 
                         case 2:
                             await _adminController.UpdateAdminAsync(new Admin()
-                                { UserId = e.From.Id.ToString(), CommandSteps = 0 });
+                            { UserId = e.From.Id.ToString(), CommandSteps = 0 });
                             var addChannel = await _forceJoinController.AddChannelAsync(new ForceJoinChannel()
-                                { ChId = e.Text ?? "" });
+                            { ChId = e.Text ?? "" });
                             if (addChannel)
                                 await bot.SendTextMessageAsync(e.From.Id, "Channel Has Been Added SuccessFully",
                                     replyMarkup: ChannelCommandsMarkUp, cancellationToken: ct);
@@ -1012,7 +1015,7 @@ public class Bot
 
                             break;
 
-                        #endregion
+                            #endregion
                     }
                 }
 
@@ -1041,7 +1044,9 @@ public class Bot
                                     ParseMode.Html, cancellationToken: ct, replyMarkup: cancelQuestioningMarkup);
                                 await _questionController.CreateQuestionAsync(new Question()
                                 {
-                                    CreatorId = e.From.Id.ToString(), Answer = answer, Question1 = question,
+                                    CreatorId = e.From.Id.ToString(),
+                                    Answer = answer,
+                                    Question1 = question,
                                     Language = getAdmin.CurrentQuestionLanguage
                                 });
                             }
@@ -1062,7 +1067,7 @@ public class Bot
                             if (remove)
                             {
                                 await _adminController.UpdateAdminAsync(new Admin()
-                                    { UserId = e.From.Id.ToString(), QuestionSteps = 0 });
+                                { UserId = e.From.Id.ToString(), QuestionSteps = 0 });
                                 await bot.SendTextMessageAsync(e.From.Id, "Question Removed Successfully!",
                                     replyMarkup: QuestionCommandsMarkUp, cancellationToken: ct);
                             }
@@ -1075,7 +1080,7 @@ public class Bot
 
                             break;
 
-                        #endregion
+                            #endregion
 
                     }
                 }

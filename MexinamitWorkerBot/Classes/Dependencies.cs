@@ -48,11 +48,9 @@ public static class Dependencies
 
         { Languages.Spanish, new Dictionary<string, string>() { { "Welcome", "Bienvenidos" }, { "Enter Your Name:", "Introduzca su nombre:" } } }
     };
-
-    public static string NewConnectionString(string user, string pass, string dbName) => $@"Server=.;Database={dbName};Integrated Security=True;Connect Timeout=30;User ID={user};Password={pass}";
-
     public static string ConnectionString { get; set; } = @"Data Source=.;Initial Catalog=MexinamitBot;User ID=bot;Password=alisalehi!@#123";
-
+    //Data Source=qwxp\SQL2019;Initial Catalog=TelbotZB_HangFire_db;User ID=bot;Password=jokerr123
+    // is main
     public static List<string> StatusList => new() { "admin", "Admin", "owner", "Owner", "Member", "Administrator", "administrator", "Creator" };
     public static string ApiUrl => "https://mexinamit.ali-chv.com/api";
     public static string PerfectMoneyApiUrl => "https://mexinamit.com/gateways/prefect-money";
