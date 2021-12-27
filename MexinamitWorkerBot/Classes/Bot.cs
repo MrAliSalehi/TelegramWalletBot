@@ -41,19 +41,19 @@ public class Bot
     #endregion
 
     #region Init
-    public async Task RunAsync()
+    public async Task RunAsync(CancellationToken canceling)
     {
         var botClient = new TelegramBotClient(Dependencies.BotInformation.Token);
-        using var cts = new CancellationTokenSource();
+       // using var cts = new CancellationTokenSource();
         var receiverOptions = new ReceiverOptions
         {
             AllowedUpdates = { }
         };
-        botClient.StartReceiving(HandleUpdateAsync, HandleErrorAsync, receiverOptions, cts.Token);
-        var me = await botClient.GetMeAsync(cts.Token);
+        botClient.StartReceiving(HandleUpdateAsync, HandleErrorAsync, receiverOptions, canceling);
+        var me = await botClient.GetMeAsync(canceling);
         Console.WriteLine($"Start listening for @{me.Username}");
         Console.ReadLine();
-        cts.Cancel();
+      // cts.Cancel();
     }
     #endregion
 
