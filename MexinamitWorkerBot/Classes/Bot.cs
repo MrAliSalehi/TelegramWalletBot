@@ -17,7 +17,7 @@ using Message = Telegram.Bot.Types.Message;
 using User = MexinamitWorkerBot.Database.Models.User;
 namespace MexinamitWorkerBot.Classes;
 
-public class Bot
+public class Bot : BackgroundService
 {
     //Todo : move in dependencies and get lang from db 
     // todo select lang - question?awn? done-
@@ -43,17 +43,7 @@ public class Bot
     #region Init
     public async Task RunAsync(CancellationToken canceling)
     {
-        var botClient = new TelegramBotClient(Dependencies.BotInformation.Token);
-       // using var cts = new CancellationTokenSource();
-        var receiverOptions = new ReceiverOptions
-        {
-            AllowedUpdates = { }
-        };
-        botClient.StartReceiving(HandleUpdateAsync, HandleErrorAsync, receiverOptions, canceling);
-        var me = await botClient.GetMeAsync(canceling);
-        Console.WriteLine($"Start listening for @{me.Username}");
-        Console.ReadLine();
-      // cts.Cancel();
+
     }
     #endregion
 
@@ -177,7 +167,7 @@ public class Bot
     #endregion
 
     #region Handlers
-    private async Task HandleUpdateAsync(ITelegramBotClient bot, Update e, CancellationToken ct)
+    public async Task HandleUpdateAsync(ITelegramBotClient bot, Update e, CancellationToken ct)
     {
         switch (e.Type)
         {
@@ -241,7 +231,7 @@ public class Bot
 
         return results;
     }
-    private async Task HandleCallBackQueryAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
+    public async Task HandleCallBackQueryAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
     {
         if (e.Data is null) return;
         if (e.Message is null) return;
@@ -743,10 +733,10 @@ public class Bot
             await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawStep = 0, DepositStep = 0 });
         }
     }
-    private async Task HandleMessageAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
+    public async Task HandleMessageAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
     {
         Console.WriteLine($"Message: '{e.Chat.Id}' from :[{e.Text}].");
-       
+
         try
         {
             if (e.Text is null or "" || e.From is null) return;
@@ -1103,7 +1093,7 @@ public class Bot
         }
 
     }
-    private async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
+    public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         //var errorMessage = exception switch
         //{
@@ -2400,4 +2390,24 @@ public class Bot
         await bot.SendTextMessageAsync(1127927726, $"{exception.Message}\n{exception.StackTrace}", cancellationToken: ct);
     }
     #endregion
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+
+            var botClient = new TelegramBotClient(Dependencies.BotInformation.Token);
+            // using var cts = new CancellationTokenSource();
+            var receiverOptions = new ReceiverOptions
+            {
+                AllowedUpdates = { }
+            };
+            botClient.StartReceiving(HandleUpdateAsync, HandleErrorAsync, receiverOptions, stoppingToken);
+            var me = await botClient.GetMeAsync(stoppingToken);
+            Console.WriteLine($"Start listening for @{me.Username}");
+            // Console.ReadLine();
+            // cts.Cancel();
+        }
+    }
+
 }

@@ -1,4 +1,5 @@
 using MexinamitWorkerBot;
+using MexinamitWorkerBot.Classes;
 
 if (!File.Exists("Log.txt"))
 {
@@ -10,7 +11,7 @@ Console.WriteLine("Application Running");
 var host = Host.CreateDefaultBuilder(args)
     .UseSystemd().ConfigureServices(services =>
     {
-        services.AddHostedService<Worker>();
+        services.AddHostedService<Bot>();
     })
     .Build();
 
