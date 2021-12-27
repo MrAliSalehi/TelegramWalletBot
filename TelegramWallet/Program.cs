@@ -5,6 +5,7 @@ Console.WriteLine("Application Running");
 //var builder = WebApplication.CreateBuilder(args);
 
 var host = Host.CreateDefaultBuilder(args)
+    .UseSystemd()
     .ConfigureServices(services =>
     {
         services.AddHostedService<Worker>();
