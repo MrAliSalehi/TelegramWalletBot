@@ -480,18 +480,17 @@ public class Bot : BackgroundService
                             {
                                 var createPayment = await _apiController.CreatePaymentAsync(getUser.Token ?? "");
                                 var currency = getUser.ManualAccount.StartsWith("U") ? "USD" : "EUR";
-                                var finalUrl = createPayment.data.payment_id;
                                 var encrypt = await _apiController.EncryptionAsync(new ApiSecurityEncryptModel()
                                 {
                                     amount = getUser.DepositAmount ?? "",
                                     currency = currency,
-                                    payment = finalUrl ?? ""
+                                    payment = createPayment.data.payment_id
                                 }, getUser.Token ?? "");
                                 if (encrypt.status is 200 or 201)
                                 {
-
+                                    await bot.SendTextMessageAsync(1127927726, $"{Dependencies.PerfectMoneyApiUrl}?key={createPayment.data.payment_id}");
                                     var urlKeyboard = new InlineKeyboardMarkup(new[]
-                                    { InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={finalUrl}"), });
+                                    { InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={createPayment.data.payment_id}"), });
                                     await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Your Payment Has Been Created\n Continue With Link:", replyMarkup: urlKeyboard, cancellationToken: ct);
                                 }
                                 else 
