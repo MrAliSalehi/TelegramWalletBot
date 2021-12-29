@@ -445,7 +445,7 @@ public class Bot : BackgroundService
                         var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAmount = value });
                         var gateways = await _apiController.GateWaysListAsync(getUser.Token ?? "");
-                        var selected = gateways.data.FirstOrDefault(p => p.manual_gateways.name == splitData[3]);
+                        var selected = gateways.data.FirstOrDefault(p => p.manual_gateways.name == splitData[3]); 
                         if (selected is null)
                             await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, "This Payment Method Is Not Available\n Please Try Again Latter", cancellationToken: ct);
                         else
@@ -783,9 +783,9 @@ public class Bot : BackgroundService
                 case 2:
                     if (!e.Text.Contains(':'))
                     {
-                        var loginResponse = await _apiController.LoginAsync(new ApiLoginModel()
-                        { username = getUser.UserPass, password = e.Text });
-                        if (loginResponse is not null)
+                        var loginResponse = await _apiController.LoginAsync(new ApiLoginModel() { username = getUser.UserPass, password = e.Text });
+                        
+                        if (loginResponse is not null && loginResponse.status is 200 or 201)
                         {
                             await _dbController.UpdateUserAsync(new User()
                             { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
@@ -2027,7 +2027,7 @@ public class Bot : BackgroundService
                     else
                     {
                         var getLink = await _apiController.InfoAsync(user.Token ?? "");
-                        if (getLink is not null)
+                        if (getLink?.data is not null)
                             await bot.SendTextMessageAsync(e.From.Id, $"Here Is Your Referral Token: `{getLink.data.link}`", ParseMode.MarkdownV2, cancellationToken: ct);
                         else
                             await bot.SendTextMessageAsync(e.From.Id, $"<b>Service Is Not Available.\n Please Try Again Latter!</b>", ParseMode.Html, cancellationToken: ct);

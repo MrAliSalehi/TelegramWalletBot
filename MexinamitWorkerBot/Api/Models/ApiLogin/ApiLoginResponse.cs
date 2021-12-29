@@ -3,6 +3,7 @@
 public class ApiLoginResponse
 {
     public Data data { get; set; }
+    public int status { get; set; }
 }
 
 public class Data
