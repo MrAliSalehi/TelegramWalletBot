@@ -785,7 +785,7 @@ public class Bot : BackgroundService
                     {
                         var loginResponse = await _apiController.LoginAsync(new ApiLoginModel() { username = getUser.UserPass, password = e.Text });
                         
-                        if (loginResponse is not null && loginResponse.status is 200 or 201)
+                        if (loginResponse?.status is 200 or 201)
                         {
                             await _dbController.UpdateUserAsync(new User()
                             { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
