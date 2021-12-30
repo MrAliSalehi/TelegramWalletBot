@@ -886,7 +886,7 @@ public class Bot : BackgroundService
                             var response = await _apiController.RegisterUserAsync(new ApiRegisterModel()
                             { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
                             await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
-                                $"Your Request`s Result:\n{response.message}", cancellationToken: ct);
+                                $"Your Request`s Result:\n{response.HandleResponse()}", cancellationToken: ct);
                         }
                     }
                     else
@@ -2355,9 +2355,9 @@ public class Bot : BackgroundService
                             await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html,
                                 cancellationToken: ct);
                             var emailPass = user.UserPass.Split(':');
-                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = "", has_invitation = "0", email = emailPass[0], password = emailPass[1] });
+                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { has_invitation = "0", email = emailPass[0], password = emailPass[1] });
                             await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                $"Your Request`s Result:\n{response.message}", cancellationToken: ct);
+                                $"Your Request`s Result:\n<b>{response.HandleResponse()}</b>",ParseMode.Html, cancellationToken: ct);
                             break;
                         #endregion
 
