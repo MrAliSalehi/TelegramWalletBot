@@ -7,7 +7,9 @@ if (!File.Exists("Log.txt"))
     Console.WriteLine("Log File Created");
 }
 
+Console.WriteLine("im update ");
 Console.WriteLine("Application Running");
+Console.WriteLine("im updateeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
 var host = Host.CreateDefaultBuilder(args)
     .UseSystemd().ConfigureServices(services =>
     {
