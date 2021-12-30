@@ -6,6 +6,12 @@ if (!File.Exists("Log.txt"))
     File.Create("Log.txt");
     Console.WriteLine("Log File Created");
 }
+
+if (!File.Exists("var.doNotTouchMe"))
+{
+    File.Create("var.doNotTouchMe");
+    Console.WriteLine("Ver. Created");
+}
 var getVersion = await Version.HandelVersionAsync(new CancellationToken());
 
 Console.WriteLine($"Application Running-Vr.{getVersion}");
