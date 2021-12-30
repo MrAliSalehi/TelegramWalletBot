@@ -8,6 +8,7 @@ public class ApiRegisterResponse
 }
 public class Data
 {
+    public string result { get; set; }
     public List<string> email { get; set; }
     public List<string> password { get; set; }
     public List<string> has_invitation { get; set; }
@@ -19,11 +20,17 @@ public static class ApiResponseHandler
     public static string HandleResponse(this ApiRegisterResponse apiRegister)
     {
         var results = "";
+        if (!string.IsNullOrEmpty(apiRegister.data.result))
+        {
+            return apiRegister.data.result;
+        }
+
+
         if (apiRegister.data.password is { Count: > 0 })
         {
             var passwordResponse = "";
-           apiRegister.data.password.ForEach(p=>passwordResponse+=$"{p}\n");
-           results += passwordResponse;
+            apiRegister.data.password.ForEach(p => passwordResponse += $"{p}\n");
+            results += passwordResponse;
         }
 
         if (apiRegister.data.email is { Count: > 0 })
@@ -40,12 +47,14 @@ public static class ApiResponseHandler
             results += hasInvResponse;
         }
 
-        if (apiRegister.data.link is {Count : > 0})
+        if (apiRegister.data.link is { Count: > 0 })
         {
             var linkResponse = "";
             apiRegister.data.link.ForEach(p => linkResponse += $"{p}\n");
             results += linkResponse;
         }
+
+
         return results;
     }
 }

@@ -23,6 +23,7 @@ namespace MexinamitWorkerBot.Api;
 public class ApiController
 {
     //95315888 : 123456
+
     public async Task<ApiLoginResponse?> LoginAsync(ApiLoginModel loginModel)
     {
         try
@@ -271,7 +272,6 @@ public class ApiController
             var request = new RestRequest("/register");
             request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(registerModel));
             var response = await client.PostAsync<ApiRegisterResponse>(request);
-            var ser = JsonConvert.SerializeObject(response);
             return response;
         }
         catch (Exception exception)

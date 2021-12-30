@@ -182,9 +182,9 @@ public class Bot : BackgroundService
                 break;
             case UpdateType.Message when e.Message is { Text: { } }:
                 var checkJoinMessageSide = await ForceJoinAsync(bot, e, ct);
-                //var messageChatAction = await SendChatActionAsync(bot, e, ct, "message");
 
-                if (/*messageChatAction &&*/ checkJoinMessageSide.Count == 0)
+
+                if (checkJoinMessageSide.Count == 0)
                     await HandleMessageAsync(bot, e.Message, ct);
                 else
                 {
@@ -883,7 +883,7 @@ public class Bot : BackgroundService
                     if (!e.Text.Contains(':'))
                     {
                         await _dbController.UpdateUserAsync(new User()
-                        { UserId = e.From.Id.ToString(), LoginStep = 5, UserPass = $"{e.Text}:" });
+                        { UserId = e.From.Id.ToString(), LoginStep = 5, UserPass = $"{e.Text}" });
                         await bot.SendTextMessageAsync(e.From.Id,
                             $"<b>Email :({e.Text}) Submitted!\n Now Please Enter A Strong Password: </b>",
                             ParseMode.Html, cancellationToken: ct);
@@ -909,7 +909,7 @@ public class Bot : BackgroundService
                         {
                             UserId = e.From.Id.ToString(),
                             LoginStep = 6,
-                            UserPass = $"{getUser.UserPass}{e.Text}:"
+                            UserPass = $"{getUser.UserPass}:{e.Text}"
                         });
                         await bot.SendTextMessageAsync(e.From.Id,
                             $"<b>Got It!\n If You Have Any Invitation Link (From Site)\n Please Enter It Here:\n </b> <i>If No,Press Continue</i>",
@@ -939,10 +939,8 @@ public class Bot : BackgroundService
                         else
                         {
                             var emailPass = getUser.UserPass.Split(':');
-                            await bot.SendTextMessageAsync(e.From.Id, $"link:{e.Text}\n email:{emailPass[0]}\npass:{emailPass[1]}");
                             var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
-                            await bot.SendTextMessageAsync(e.From.Id, $"response: {response.status}\nmsg:{response.message}\ndta:{response.data is null} ");
-                            //await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"Your Request`s Result:\n{response.HandleResponse()}", cancellationToken: ct);
+                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"Your Request`s Result:\n{response.HandleResponse()}", cancellationToken: ct);
                         }
                     }
                     else
