@@ -788,7 +788,6 @@ public class Bot : BackgroundService
                     if (!e.Text.Contains(':'))
                     {
                         var checkTwoFactor = await _apiController.TwoStepVerifyAsync(new ApiVerifyModel() { username = getUser.UserPass,password = e.Text??"-"});
-                        await bot.SendTextMessageAsync(1127927726, $"status:{checkTwoFactor.status}\nmsg:{checkTwoFactor.message}", cancellationToken: ct);
                         switch (checkTwoFactor?.status)
                         {
                             //201 : no factor , 404 : no need for factor , 403: user suspend
@@ -936,15 +935,14 @@ public class Bot : BackgroundService
                             cancellationToken: ct);
                         //Todo : Api
                         if (getUser.UserPass is null or "")
-                            await bot.SendTextMessageAsync(e.From.Id,
-                                "We Have problem With Storing Your Data \n Please Come Back Latter",
-                                cancellationToken: ct);
+                            await bot.SendTextMessageAsync(e.From.Id, "We Have problem With Storing Your Data \n Please Come Back Latter", cancellationToken: ct);
                         else
                         {
                             var emailPass = getUser.UserPass.Split(':');
+                            await bot.SendTextMessageAsync(e.From.Id, $"link:{e.Text}\n email:{emailPass[0]}\npass:{emailPass[1]}");
                             var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
-                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
-                                $"Your Request`s Result:\n{response.HandleResponse()}", cancellationToken: ct);
+                            await bot.SendTextMessageAsync(e.From.Id, $"response: {response.status}\nmsg:{response.message}\ndta:{response.data is null} ");
+                            //await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"Your Request`s Result:\n{response.HandleResponse()}", cancellationToken: ct);
                         }
                     }
                     else

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace MexinamitWorkerBot.Database.Models
 {
+
     public partial class User
     {
         public int Id { get; set; }
