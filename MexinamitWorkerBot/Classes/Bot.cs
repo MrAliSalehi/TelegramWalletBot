@@ -821,6 +821,7 @@ public class Bot : BackgroundService
 
                             #region Suspend-405
                             case 405:
+                                await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
                                 await bot.SendTextMessageAsync(e.From.Id, "Your Account Has Been Suspend!", cancellationToken: ct);
                                 break;
                                 #endregion
@@ -828,6 +829,7 @@ public class Bot : BackgroundService
                                 #region Defualt
 
                                 default:
+                                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
                                     await bot.SendTextMessageAsync(e.From.Id, "Sorry We Got Some Problems\n PLease Come Back Latter!", cancellationToken: ct);
                                 break;
 
