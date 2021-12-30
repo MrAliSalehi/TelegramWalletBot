@@ -813,7 +813,7 @@ public class Bot : BackgroundService
                             #endregion
 
                             #region Need 2 Factor
-                            case 201:
+                            case 201 or 200:
                                 await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 7, UserPass = $"{getUser.UserPass}:{e.Text}" });
                                 await bot.SendTextMessageAsync(e.From.Id, "Your Account Has </i>Two Step Verification</i>\n We Send A <b>Code</b> To Your Email\n <b>Please Enter It Here:</b>", ParseMode.Html, cancellationToken: ct);
                                 break;
