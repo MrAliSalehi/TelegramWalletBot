@@ -7,7 +7,10 @@ public static class Version
     public static async Task<double> HandelVersionAsync(CancellationToken ct)
     {
         if (!File.Exists(VersionName))
+        {
             File.Create(VersionName);
+            await File.WriteAllLinesAsync(VersionName, new List<string>() { $"{VersionNumber}" }, ct);
+        }
 
         var read = await File.ReadAllLinesAsync(VersionName, ct);
         if (read is not { Length: > 0 }) return -1;

@@ -30,12 +30,10 @@ public class ApiController
             var client = new RestClient(Dependencies.ApiUrl);
             var request = new RestRequest("/login");
             var jsonBody = JsonConvert.SerializeObject(loginModel);
-            request.AddHeader("Content-Length", $"{loginModel.ToString()?.Length}");
+           
             request.LoadDefaultHeaders().AddJsonBody(jsonBody);
-            var response = await client.PostAsync<JsonArray>(request);
-            var serializeResponse = JsonConvert.SerializeObject(response.First());
-            var token = JsonConvert.DeserializeObject<ApiLoginResponse>(serializeResponse);
-            return token;
+            var response = await client.PostAsync<ApiLoginResponse>(request);
+            return response;
         }
         catch (Exception exception)
         {
@@ -80,10 +78,8 @@ public class ApiController
             };
             var request = new RestRequest("/profile/info");
             request.LoadDefaultHeaders();
-            var response = await client.GetAsync<JsonArray>(request);
-            var serializeResponse = JsonConvert.SerializeObject(response.First());
-            var finalResponse = JsonConvert.DeserializeObject<ApiInfoResponse>(serializeResponse);
-            return finalResponse;
+            var response = await client.GetAsync<ApiInfoResponse>(request);
+            return response;
         }
         catch (Exception exception)
         {
