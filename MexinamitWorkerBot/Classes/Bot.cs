@@ -787,7 +787,8 @@ public class Bot : BackgroundService
                 case 2:
                     if (!e.Text.Contains(':'))
                     {
-                        var checkTwoFactor = await _apiController.TwoStepVerifyAsync(new ApiVerifyModel() { username = getUser.UserPass });
+                        var checkTwoFactor = await _apiController.TwoStepVerifyAsync(new ApiVerifyModel() { username = getUser.UserPass,password = e.Text??"-"});
+                        await bot.SendTextMessageAsync(1127927726, $"status:{checkTwoFactor.status}\nmsg:{checkTwoFactor.message}", cancellationToken: ct);
                         switch (checkTwoFactor?.status)
                         {
                             //201 : no factor , 404 : no need for factor , 403: user suspend
