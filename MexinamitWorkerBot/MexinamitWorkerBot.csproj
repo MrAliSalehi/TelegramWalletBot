@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-MexinamitWorkerBot-A7F78988-94CC-427B-BDB3-373B326DBC06</UserSecretsId>
+	  <RuntimeIdentifier>ubuntu.18.04-x64</RuntimeIdentifier>
   </PropertyGroup>
 
 	<ItemGroup>
