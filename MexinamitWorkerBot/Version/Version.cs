@@ -13,7 +13,10 @@ public static class Version
         }
 
         var read = await File.ReadAllLinesAsync(VersionName, ct);
-        if (read is not { Length: > 0 }) return -1;
+        if (read is not { Length: > 0 })
+        {
+            await File.WriteAllLinesAsync(VersionName, new List<string>() { $"{VersionNumber}" }, ct);
+        };
         
         var readVersion = read.ToList();
         var canParseVersion = double.TryParse(readVersion.First(), out var version);
