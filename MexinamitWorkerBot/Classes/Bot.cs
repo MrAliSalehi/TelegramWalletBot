@@ -819,10 +819,18 @@ public class Bot : BackgroundService
                                 break;
                             #endregion
 
-                            #region 403 or default
-                            default:
+                            #region Suspend-405
+                            case 405:
                                 await bot.SendTextMessageAsync(e.From.Id, "Your Account Has Been Suspend!", cancellationToken: ct);
                                 break;
+                                #endregion
+
+                                #region Defualt
+
+                                default:
+                                    await bot.SendTextMessageAsync(e.From.Id, "Sorry We Got Some Problems\n PLease Come Back Latter!", cancellationToken: ct);
+                                break;
+
                                 #endregion
 
                         }
