@@ -264,13 +264,13 @@ public class ApiController
         }
 
     }
-    public async Task<ApiRegisterResponse?> RegisterUserAsync(ApiRegisterModel registerModel)
+    public async Task<ApiRegisterResponse?> RegisterUserAsync(ApiRegisterModel registerModel,bool ignoreLink)
     {
         try
         {
             var client = new RestClient(Dependencies.ApiUrl);
             var request = new RestRequest("/register");
-            request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(registerModel));
+            request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(registerModel,new JsonSerializerSettings(){NullValueHandling = ignoreLink?NullValueHandling.Ignore:NullValueHandling.Include}));
             var response = await client.PostAsync<ApiRegisterResponse>(request);
             return response;
         }
