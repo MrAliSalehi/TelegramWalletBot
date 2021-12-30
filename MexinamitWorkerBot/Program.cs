@@ -7,14 +7,14 @@ if (!File.Exists("Log.txt"))
     Console.WriteLine("Log File Created");
 }
 
-if (!File.Exists("var.doNotTouchMe"))
-{
-    File.Create("var.doNotTouchMe");
-    Console.WriteLine("Ver. Created");
-}
-var getVersion = await Version.HandelVersionAsync(new CancellationToken());
+//if (!File.Exists("var.doNotTouchMe"))
+//{
+//    File.Create("var.doNotTouchMe");
+//    Console.WriteLine("Ver. Created");
+//}
+//var getVersion = await Version.HandelVersionAsync(new CancellationToken());
 
-Console.WriteLine($"Application Running-Vr.{getVersion}");
+Console.WriteLine($"Application Running");
 var host = Host.CreateDefaultBuilder(args)
     .UseSystemd().ConfigureServices(services =>
     {
