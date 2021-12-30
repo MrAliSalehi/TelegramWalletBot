@@ -2,7 +2,7 @@
 
 public static class Version
 {
-    private const double VersionNumber = 1.2;
+    private const double VersionNumber = 1.22;
     private const string VersionName = "ver.doNotTouchMe";
     public static async Task<double> HandelVersionAsync(CancellationToken ct)
     {
