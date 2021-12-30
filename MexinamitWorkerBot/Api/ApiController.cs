@@ -10,6 +10,7 @@ using MexinamitWorkerBot.Api.Models.ApiRegister;
 using MexinamitWorkerBot.Api.Models.ApiSecurity.ApiSecurityEncrypt;
 using MexinamitWorkerBot.Api.Models.ApiSubscriptions;
 using MexinamitWorkerBot.Api.Models.ApiSummary;
+using MexinamitWorkerBot.Api.Models.ApiVerifyUser;
 using MexinamitWorkerBot.Api.Models.ApiWithdraw;
 using MexinamitWorkerBot.Api.Models.Transactions;
 using MexinamitWorkerBot.Classes;
@@ -401,6 +402,24 @@ public class ApiController
             var request = new RestRequest("/encrypt");
             request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(model));
             var response = await client.PostAsync<ApiSecurityEncryptResponse>(request);
+            return response;
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception);
+            await Extensions.WriteLogAsync(exception);
+            return null;
+        }
+    }
+    public async Task<ApiVerifyResponse?> TwoStepVerifyAsync(ApiVerifyModel model)
+    {
+
+        try
+        {
+            var client = new RestClient(Dependencies.ApiUrl);
+            var request = new RestRequest("/auth/2fa");
+            request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(model));
+            var response = await client.PostAsync<ApiVerifyResponse>(request);
             return response;
         }
         catch (Exception exception)

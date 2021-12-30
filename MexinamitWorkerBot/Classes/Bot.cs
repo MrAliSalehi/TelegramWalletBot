@@ -5,6 +5,7 @@ using MexinamitWorkerBot.Api.Models.ApiManualGateways;
 using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAds;
 using MexinamitWorkerBot.Api.Models.ApiRegister;
 using MexinamitWorkerBot.Api.Models.ApiSecurity.ApiSecurityEncrypt;
+using MexinamitWorkerBot.Api.Models.ApiVerifyUser;
 using MexinamitWorkerBot.Api.Models.ApiWithdraw;
 using MexinamitWorkerBot.Classes.DataBase;
 using MexinamitWorkerBot.Database.Models;
@@ -445,7 +446,7 @@ public class Bot : BackgroundService
                         var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAmount = value });
                         var gateways = await _apiController.GateWaysListAsync(getUser.Token ?? "");
-                        var selected = gateways.data.FirstOrDefault(p => p.manual_gateways.name == splitData[3]); 
+                        var selected = gateways.data.FirstOrDefault(p => p.manual_gateways.name == splitData[3]);
                         if (selected is null)
                             await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, "This Payment Method Is Not Available\n Please Try Again Latter", cancellationToken: ct);
                         else
@@ -493,7 +494,7 @@ public class Bot : BackgroundService
                                     { InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={createPayment.data.payment_id}"), });
                                     await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Your Payment Has Been Created\n Continue With Link:", replyMarkup: urlKeyboard, cancellationToken: ct);
                                 }
-                                else 
+                                else
                                     await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Sorry Right Now Our Service Is Not Available ", cancellationToken: ct);
 
                             }
@@ -766,47 +767,93 @@ public class Bot : BackgroundService
                 #region Login
 
                 case 1:
-                    if (!e.Text.Contains(':'))
                     {
-                        await bot.SendTextMessageAsync(e.Chat.Id,
-                            $"<b>Dear {e.Text} </b>\n Please Enter Your Password:", ParseMode.Html,
-                            cancellationToken: ct);
-                        await _dbController.UpdateUserAsync(new User()
-                        { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
-                    }
-                    else
-                        await bot.SendTextMessageAsync(e.From.Id,
-                            $"<b>Your User Name Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html,
-                            cancellationToken: ct);
+                        if (!e.Text.Contains(':'))
+                        {
+                            await bot.SendTextMessageAsync(e.Chat.Id,
+                                $"<b>Dear {e.Text} </b>\n Please Enter Your Password:", ParseMode.Html,
+                                cancellationToken: ct);
+                            await _dbController.UpdateUserAsync(new User()
+                            { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
+                        }
+                        else
+                            await bot.SendTextMessageAsync(e.From.Id,
+                                $"<b>Your User Name Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html,
+                                cancellationToken: ct);
 
-                    break;
+                        break;
+                    }
+
                 case 2:
                     if (!e.Text.Contains(':'))
                     {
-                        var loginResponse = await _apiController.LoginAsync(new ApiLoginModel() { username = getUser.UserPass, password = e.Text });
-                        
-                        if (loginResponse?.status is 200 or 201)
+                        var checkTwoFactor = await _apiController.TwoStepVerifyAsync(new ApiVerifyModel() { username = getUser.UserPass });
+                        switch (checkTwoFactor?.status)
                         {
-                            await _dbController.UpdateUserAsync(new User()
-                            { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
-                            await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html,
-                                replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
-                        }
-                        else
-                        {
-                            await _dbController.UpdateUserAsync(new User()
-                            { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
-                            await bot.SendTextMessageAsync(e.Chat.Id,
-                                "<b>Wrong User Or Password,Please Try Again :</b> ", ParseMode.Html,
-                                replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
+                            //201 : no factor , 404 : no need for factor , 403: user suspend
+
+                            #region No-Need-For-TwoFactor
+                            case 404:
+                                {
+                                    var loginResponse = await _apiController.LoginAsync(new ApiLoginModel() { username = getUser.UserPass, password = e.Text });
+                                    if (loginResponse?.status is 200 or 201)
+                                    {
+                                        await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
+                                        await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html, replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
+                                    }
+                                    else
+                                    {
+                                        await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
+                                        await bot.SendTextMessageAsync(e.Chat.Id,
+                                            "<b>Wrong User Or Password,Please Try Again :</b> ", ParseMode.Html,
+                                            replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
+                                    }
+                                    break;
+                                }
+                            #endregion
+
+                            #region Need 2 Factor
+                            case 201:
+                                await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 7, UserPass = $"{getUser.UserPass}:{e.Text}" });
+                                await bot.SendTextMessageAsync(e.From.Id, "Your Account Has </i>Two Step Verification</i>\n We Send A <b>Code</b> To Your Email\n <b>Please Enter It Here:</b>", ParseMode.Html, cancellationToken: ct);
+                                break;
+                            #endregion
+
+                            #region 403 or default
+                            default:
+                                await bot.SendTextMessageAsync(e.From.Id, "Your Account Has Been Suspend!", cancellationToken: ct);
+                                break;
+                                #endregion
+
                         }
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>",
-                            ParseMode.Html, cancellationToken: ct);
-
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
                     break;
 
+                #region TwoStepVerify
+                case 7:
+                    var splitUserPass = getUser.UserPass?.Split(':');
+                    var loginPendingMessage = await bot.SendTextMessageAsync(e.Chat.Id, "<b>Pending Request...</b> ", ParseMode.Html, cancellationToken: ct);
+                    var loginWithTwoStep = await _apiController.LoginAsync(new ApiLoginModel()
+                    {
+                        username = splitUserPass?[0] ?? "",
+                        password = splitUserPass?[1] ?? "",
+                        code = e.Text ?? ""
+                    });
+                    var handleResponse = loginWithTwoStep.HandleResponse(out var token);
+                    if (!string.IsNullOrEmpty(token))
+                    {
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 3});
+                        await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html, replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
+                    }
+                    else
+                    {
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
+                        await bot.EditMessageTextAsync(loginPendingMessage.Chat.Id, loginPendingMessage.MessageId, $"<b>Your Login Results:\n{handleResponse}</b>", ParseMode.Html, cancellationToken: ct);
+                    }
+                    break;
+                #endregion
                 #endregion
 
                 #region RegisteredUsers
@@ -883,8 +930,7 @@ public class Bot : BackgroundService
                         else
                         {
                             var emailPass = getUser.UserPass.Split(':');
-                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel()
-                            { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
+                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] });
                             await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId,
                                 $"Your Request`s Result:\n{response.HandleResponse()}", cancellationToken: ct);
                         }
@@ -2357,7 +2403,7 @@ public class Bot : BackgroundService
                             var emailPass = user.UserPass.Split(':');
                             var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { has_invitation = "0", email = emailPass[0], password = emailPass[1] });
                             await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                $"Your Request`s Result:\n<b>{response.HandleResponse()}</b>",ParseMode.Html, cancellationToken: ct);
+                                $"Your Request`s Result:\n<b>{response.HandleResponse()}</b>", ParseMode.Html, cancellationToken: ct);
                             break;
                         #endregion
 
