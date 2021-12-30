@@ -37,14 +37,7 @@ public static class Dependencies
     public static Dictionary<Languages, Dictionary<string, string>> LangDictionary = new()
     {
 
-        {
-            Languages.English,
-            new Dictionary<string, string>()
-        {
-            { "Login", "Login" },
-            { "Register", "Register" }
-        }
-        },
+        { Languages.English, new Dictionary<string, string>() { { "Login", "Login" }, { "Register", "Register" } } },
 
         { Languages.Spanish, new Dictionary<string, string>() { { "Welcome", "Bienvenidos" }, { "Enter Your Name:", "Introduzca su nombre:" } } }
     };
