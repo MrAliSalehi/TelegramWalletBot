@@ -6,6 +6,7 @@ using MexinamitWorkerBot.Api.Models.ApiLogin;
 using MexinamitWorkerBot.Api.Models.ApiManualGateways;
 using MexinamitWorkerBot.Api.Models.ApiPmAccountData;
 using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAds;
+using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAdsInfo;
 using MexinamitWorkerBot.Api.Models.ApiRegister;
 using MexinamitWorkerBot.Api.Models.ApiSecurity.ApiSecurityEncrypt;
 using MexinamitWorkerBot.Api.Models.ApiSubscriptions;
@@ -22,7 +23,6 @@ namespace MexinamitWorkerBot.Api;
 
 public class ApiController
 {
-    //95315888 : 123456
 
     public async Task<ApiLoginResponse?> LoginAsync(ApiLoginModel loginModel)
     {
@@ -31,7 +31,7 @@ public class ApiController
             var client = new RestClient(Dependencies.ApiUrl);
             var request = new RestRequest("/login");
             var jsonBody = JsonConvert.SerializeObject(loginModel);
-           
+
             request.LoadDefaultHeaders().AddJsonBody(jsonBody);
             var response = await client.PostAsync<ApiLoginResponse>(request);
             return response;
@@ -264,13 +264,13 @@ public class ApiController
         }
 
     }
-    public async Task<ApiRegisterResponse?> RegisterUserAsync(ApiRegisterModel registerModel,bool ignoreLink)
+    public async Task<ApiRegisterResponse?> RegisterUserAsync(ApiRegisterModel registerModel, bool ignoreLink)
     {
         try
         {
             var client = new RestClient(Dependencies.ApiUrl);
             var request = new RestRequest("/register");
-            request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(registerModel,new JsonSerializerSettings(){NullValueHandling = ignoreLink?NullValueHandling.Ignore:NullValueHandling.Include}));
+            request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(registerModel, new JsonSerializerSettings() { NullValueHandling = ignoreLink ? NullValueHandling.Ignore : NullValueHandling.Include }));
             var response = await client.PostAsync<ApiRegisterResponse>(request);
             return response;
         }

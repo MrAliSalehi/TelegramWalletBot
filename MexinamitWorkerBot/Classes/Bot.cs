@@ -675,17 +675,11 @@ public class Bot : BackgroundService
                     WithDrawStep = 0,
 
                 });
-                var results = await _apiController.WithdrawAsync(new ApiWithdrawModel()
-                {
-                    account = getUser.WithDrawAccount ?? "",
-                    amount = getUser.WithDrawAmount ?? "",
-                    gateway = getUser.WitchDrawPaymentMethod ?? "",
+                var results = await _apiController.WithdrawAsync(new ApiWithdrawModel() { account = getUser.WithDrawAccount ?? "", amount = getUser.WithDrawAmount ?? "", gateway = getUser.WitchDrawPaymentMethod ?? "", }, getUser.Token ?? "");
 
-                }, getUser.Token ?? "");
 
                 await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                    $"Your Withdraw Request Results Are Here : \n<b>{results.message}.</b>",
-                    ParseMode.Html, cancellationToken: ct);
+                    $"Your Withdraw Request Results Are Here : \n<b>{results.HandleApiResponse()}.</b>", ParseMode.Html, cancellationToken: ct);
             }
             #endregion
 
@@ -787,7 +781,7 @@ public class Bot : BackgroundService
                 case 2:
                     if (!e.Text.Contains(':'))
                     {
-                        var checkTwoFactor = await _apiController.TwoStepVerifyAsync(new ApiVerifyModel() { username = getUser.UserPass,password = e.Text??"-"});
+                        var checkTwoFactor = await _apiController.TwoStepVerifyAsync(new ApiVerifyModel() { username = getUser.UserPass, password = e.Text ?? "-" });
                         switch (checkTwoFactor?.status)
                         {
                             //201 : no factor , 404 : no need for factor , 403: user suspend
@@ -824,13 +818,14 @@ public class Bot : BackgroundService
                                 await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
                                 await bot.SendTextMessageAsync(e.From.Id, "Your Account Has Been Suspend!", cancellationToken: ct);
                                 break;
-                                #endregion
+                            #endregion
 
-                                #region Defualt
+                            #region Defualt
 
-                                default:
-                                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
-                                    await bot.SendTextMessageAsync(e.From.Id, "Sorry We Got Some Problems\n PLease Come Back Latter!", cancellationToken: ct);
+                            default:
+                                await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
+                                var textOutPut = checkTwoFactor?.status == 422 ? "Wrong User Or Password" : "Sorry We Got Some Problems\n PLease Come Back Latter!";
+                                await bot.SendTextMessageAsync(e.From.Id, $"<b>{textOutPut}</b>", ParseMode.Html, cancellationToken: ct);
                                 break;
 
                                 #endregion
@@ -854,7 +849,7 @@ public class Bot : BackgroundService
                     var handleResponse = loginWithTwoStep.HandleResponse(out var token);
                     if (!string.IsNullOrEmpty(token))
                     {
-                        await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 3});
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 3 });
                         await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html, replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
                     }
                     else
@@ -939,7 +934,7 @@ public class Bot : BackgroundService
                         else
                         {
                             var emailPass = getUser.UserPass.Split(':');
-                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] },false);
+                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] }, false);
                             await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"Your Request`s Result:\n{response.HandleResponse()}", cancellationToken: ct);
                         }
                     }
@@ -2329,15 +2324,12 @@ public class Bot : BackgroundService
                     {
                         #region Check
                         case "Check":
-                            await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
-                            var getValue = Convert.ToInt32(splitData[3]);
+                            await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct); var getValue = Convert.ToInt32(splitData[3]);
                             var continueAdsKeyboard = new InlineKeyboardMarkup(new[]
                             {
-                            InlineKeyboardButton.WithCallbackData("Continue",$"Ref:Ads:Finish:{getValue / 6}"),
-                        });
-                            await bot.SendTextMessageAsync(e.From.Id,
-                                $"<b> Here Is Your CheckList: </b> \n<i>{getValue / 6} Premium Account {getValue} USD</i>",
-                                ParseMode.Html, cancellationToken: ct, replyMarkup: continueAdsKeyboard);
+                                InlineKeyboardButton.WithCallbackData("Continue",$"Ref:Ads:Finish:{getValue / 6}"),
+                            });
+                            await bot.SendTextMessageAsync(e.From.Id, $"<b> Here Is Your CheckList: </b> \n<i>{getValue / 6} Premium Account {getValue} USD</i>", ParseMode.Html, cancellationToken: ct, replyMarkup: continueAdsKeyboard);
                             break;
                         #endregion
 
@@ -2350,19 +2342,14 @@ public class Bot : BackgroundService
                                 var getResponse = await _apiController.BuyReferralAdsAsync(new ApiAdsModel() { persons = count }, user.Token ?? "");
                                 if (getResponse is null)
                                 {
-                                    await bot.SendTextMessageAsync(e.From.Id,
-                                        $"<b>This Service Is InActive!\n Please Try Again Latter!</i>", ParseMode.Html,
-                                        cancellationToken: ct);
+                                    await bot.SendTextMessageAsync(e.From.Id, $"<b>This Service Is InActive!\n Please Try Again Latter!</i>", ParseMode.Html, cancellationToken: ct);
                                 }
                                 else
-                                    await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Payment Result:</b>\n <i>{getResponse.data}</i>", ParseMode.Html,
-                                        cancellationToken: ct);
+                                    await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Payment Result:</b>\n <i>{getResponse.data.result ?? getResponse.message}</i>", ParseMode.Html, cancellationToken: ct);
                             }
                             catch (Exception)
                             {
-                                await bot.SendTextMessageAsync(e.From.Id,
-                                    $"<b>We Got Some Problems Here!\nPlease Try Again Latter.\nIf Problem Still Resist Please Contact Support!</i>",
-                                    ParseMode.Html, cancellationToken: ct);
+                                await bot.SendTextMessageAsync(e.From.Id, $"<b>We Got Some Problems Here!\nPlease Try Again Latter.\nIf Problem Still Resist Please Contact Support!</b>", ParseMode.Html, cancellationToken: ct);
 
                             }
 
@@ -2409,7 +2396,7 @@ public class Bot : BackgroundService
                             await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html,
                                 cancellationToken: ct);
                             var emailPass = user.UserPass.Split(':');
-                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { has_invitation = "0", email = emailPass[0], password = emailPass[1] },true);
+                            var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { has_invitation = "0", email = emailPass[0], password = emailPass[1] }, true);
                             await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
                                 $"Your Request`s Result:\n<b>{response.HandleResponse()}</b>", ParseMode.Html, cancellationToken: ct);
                             break;

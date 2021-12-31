@@ -1,4 +1,4 @@
-﻿namespace MexinamitWorkerBot.Api.Models.ApiReferral.ApiAds;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiReferral.ApiAdsInfo;
 
 public class ApiAdsInfoResponse
 {
