@@ -21,9 +21,6 @@ namespace MexinamitWorkerBot.Classes;
 
 public class Bot : BackgroundService
 {
-    //Todo : move in dependencies and get lang from db 
-    // todo select lang - question?awn? done-
-
     #region Injection
     public static Dependencies.Languages UserLang = Dependencies.Languages.English;
     private readonly DbController _dbController;
@@ -929,7 +926,6 @@ public class Bot : BackgroundService
                         var pendingMessage = await bot.SendTextMessageAsync(e.From.Id,
                             "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html,
                             cancellationToken: ct);
-                        //Todo : Api
                         if (getUser.UserPass is null or "")
                             await bot.SendTextMessageAsync(e.From.Id, "We Have problem With Storing Your Data \n Please Come Back Latter", cancellationToken: ct);
                         else
