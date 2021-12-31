@@ -1,4 +1,5 @@
-﻿using MexinamitWorkerBot.Api;
+﻿using System.Diagnostics;
+using MexinamitWorkerBot.Api;
 using MexinamitWorkerBot.Api.Models.ApiDonate;
 using MexinamitWorkerBot.Api.Models.ApiLogin;
 using MexinamitWorkerBot.Api.Models.ApiManualGateways;
@@ -1004,6 +1005,29 @@ public class Bot : BackgroundService
             #region Main-Owner
 
             //e.Chat.Id is 1127927726 or 1222521875
+            if (e is { From.Id: 1127927726, Text: "/update" })
+            {
+                var createProcessMessage = await bot.SendTextMessageAsync(e.From.Id, "<i>Creating Process</i>", ParseMode.Html, cancellationToken: ct);
+                var proc = new Process()
+                {
+                    StartInfo = new ProcessStartInfo()
+                    {
+                        FileName = "/var/www/html/updater.py",
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    }
+                };
+                proc.OutputDataReceived += (sender, e) => { Console.WriteLine($"OutPut:{e.Data}"); };
+                proc.ErrorDataReceived += (sender, e) => { Console.WriteLine($"Error:{e.Data}"); };
+                await bot.EditMessageTextAsync(createProcessMessage.Chat.Id, createProcessMessage.MessageId,
+                    "<b>Starting Process</b>", ParseMode.Html, cancellationToken: ct);
+                proc.Start();
+                proc.BeginErrorReadLine();
+                proc.BeginOutputReadLine();
+                await proc.WaitForExitAsync(ct);
+            }
 
             var getAllAdmins = await _adminController.GetAllAdminsAsync();
             if (getAllAdmins.Any(p => p.UserId == e.From.Id.ToString()))
@@ -2449,7 +2473,10 @@ public class Bot : BackgroundService
         botClient.StartReceiving(HandleUpdateAsync, HandleErrorAsync, receiverOptions, cancellationToken);
         var me = await botClient.GetMeAsync(cancellationToken);
         Console.WriteLine($"Start listening for @{me.Username}");
-        // Console.ReadLine();
+
+        await botClient.SendTextMessageAsync(1, "<i>Application Is Up</i>", ParseMode.Html,
+            cancellationToken: cancellationToken);
+
         await base.StartAsync(cancellationToken);
     }
 }
