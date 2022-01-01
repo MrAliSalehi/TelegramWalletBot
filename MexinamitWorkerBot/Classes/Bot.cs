@@ -1000,34 +1000,7 @@ public class Bot : BackgroundService
 
             #region Main-Owner
 
-            //e.Chat.Id is 1127927726 or 1222521875
-            if (e is { From.Id: 1127927726, Text: "/update" })
-            {
-                var createProcessMessage = await bot.SendTextMessageAsync(e.From.Id, "<i>Creating Process</i>", ParseMode.Html, cancellationToken: ct);
-                var proc = new Process()
-                {
-                    StartInfo = new ProcessStartInfo()
-                    {
-                        FileName = "/usr/bin/python3.6",
-                        Arguments = "/var/www/html/updater.py",
-                        CreateNoWindow = true,
-                        UseShellExecute = false,
-                        RedirectStandardOutput = false,
-                        RedirectStandardError = false
-                    }
-                };
-                //proc.OutputDataReceived += (sender, e) => { Console.WriteLine($"OutPut:{e.Data}"); };
-                //proc.ErrorDataReceived += (sender, e) => { Console.WriteLine($"Error:{e.Data}"); };
-                await bot.EditMessageTextAsync(createProcessMessage.Chat.Id, createProcessMessage.MessageId,
-                    "<b>Starting Process</b>", ParseMode.Html, cancellationToken: ct);
-                proc.Start();
-                await Task.Delay(1000, ct);
-                //proc.BeginErrorReadLine();
-                //proc.BeginOutputReadLine();
-                await bot.EditMessageTextAsync(e.Chat.Id, e.MessageId, "<i>Creating Process</i>", ParseMode.Html, cancellationToken: ct);
 
-                await proc.WaitForExitAsync(ct);
-            }
 
             var getAllAdmins = await _adminController.GetAllAdminsAsync();
             if (getAllAdmins.Any(p => p.UserId == e.From.Id.ToString()))
