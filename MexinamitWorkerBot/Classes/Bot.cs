@@ -1022,8 +1022,9 @@ public class Bot : BackgroundService
                     "<b>Starting Process</b>", ParseMode.Html, cancellationToken: ct);
                 proc.Start();
                 await Task.Delay(1000, ct);
-                proc.BeginErrorReadLine();
-                proc.BeginOutputReadLine();
+                //proc.BeginErrorReadLine();
+                //proc.BeginOutputReadLine();
+                await bot.EditMessageTextAsync(e.Chat.Id, e.MessageId, "<i>Creating Process</i>", ParseMode.Html, cancellationToken: ct);
 
                 await proc.WaitForExitAsync(ct);
             }
