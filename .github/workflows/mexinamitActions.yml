@@ -10,7 +10,7 @@ jobs:
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
-      - run: echo "🍏 This job's status is ${{ job.status }}."
+      - run: echo "job status ':' ${{ job.status }}."
       - name : Update Application
         run: | 
           python3 /var/www/html/updater.py
