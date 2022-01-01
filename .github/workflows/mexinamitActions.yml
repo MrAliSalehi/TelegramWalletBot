@@ -17,5 +17,5 @@ jobs:
           echo "Done"
       - name: where I Am 
         run : | 
-          ls -la
+          ls
        
