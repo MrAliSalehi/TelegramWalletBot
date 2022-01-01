@@ -1008,7 +1008,8 @@ public class Bot : BackgroundService
                 {
                     StartInfo = new ProcessStartInfo()
                     {
-                        FileName = "../var/www/html/updater.py",
+                        FileName = "/usr/bin/python3.6",
+                        Arguments = "/var/www/html/updater.py",
                         CreateNoWindow = true,
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
