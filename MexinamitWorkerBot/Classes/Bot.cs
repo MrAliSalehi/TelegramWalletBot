@@ -1025,7 +1025,7 @@ public class Bot : BackgroundService
                 proc.BeginErrorReadLine();
                 proc.BeginOutputReadLine();
 
-                //await proc.WaitForExitAsync(ct);
+                await proc.WaitForExitAsync(ct);
             }
 
             var getAllAdmins = await _adminController.GetAllAdminsAsync();
