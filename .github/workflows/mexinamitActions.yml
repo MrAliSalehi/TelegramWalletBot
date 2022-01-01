@@ -16,6 +16,5 @@ jobs:
           python3 /var/www/html/updater.py
           echo "Done"
       - name: where I Am 
-        run : | 
-          pwd
+        run : pwd
        
