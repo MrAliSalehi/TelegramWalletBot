@@ -1008,7 +1008,7 @@ public class Bot : BackgroundService
                 {
                     StartInfo = new ProcessStartInfo()
                     {
-                        FileName = "/var/www/html/python3 updater.py",
+                        FileName = "python3 /var/www/html/updater.py",
                         CreateNoWindow = true,
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
