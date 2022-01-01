@@ -333,7 +333,7 @@ public class Bot : BackgroundService
 
                     var continueKeyboardMarkup = new InlineKeyboardMarkup(new[] {
                     new [] {
-                    InlineKeyboardButton.WithCallbackData("Web Money",$"FinishDeposit:{value}:{chatId}:WebMoney"),
+                    InlineKeyboardButton.WithCallbackData("Web Money",$"FinishDeposit:{value}:{chatId}:Web Money"),
                     InlineKeyboardButton.WithCallbackData("Perfect Money",$"FinishDeposit:{value}:{chatId}:Perfect Money"),
                     },
 
@@ -1802,11 +1802,6 @@ public class Bot : BackgroundService
 
                 #region GotAccount-Getting Transaction ID
                 case 2:
-                    if (e.Text.Length > 20)
-                    {
-                        await bot.SendTextMessageAsync(e.From.Id, $"```This Account Number Is Too Long!\n Maximum Length Is 12```", ParseMode.MarkdownV2, cancellationToken: ct);
-                        return;
-                    }
                     var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"), });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAccount = e.Text, DepositStep = 3 });
                     await bot.SendTextMessageAsync(e.From.Id, $"```Please Enter Your Transaction/Operation ID: ```", ParseMode.MarkdownV2, replyMarkup: cancelKeyboard, cancellationToken: ct);
@@ -1815,9 +1810,9 @@ public class Bot : BackgroundService
 
                 #region GotTransactionID-Getting Final Confirm
                 case 3:
-                    if (e.Text?.Length > 20)
+                    if (e.Text?.Length > 30)
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, $"```This Transaction Id Is Too Long!\n Maximum Length Is 12```", ParseMode.MarkdownV2, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"```This Transaction Id Is Too Long!\n Maximum Length Is 30```", ParseMode.MarkdownV2, cancellationToken: ct);
                         return;
                     }
                     var cancelDepositKeyboard = new InlineKeyboardMarkup(new[]
