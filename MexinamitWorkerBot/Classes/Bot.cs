@@ -1810,9 +1810,9 @@ public class Bot : BackgroundService
 
                 #region GotTransactionID-Getting Final Confirm
                 case 3:
-                    if (e.Text?.Length > 65)
+                    if (e.Text?.Length > 70)
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, $"```This Transaction Id Is Too Long!\n Maximum Length Is 64```", ParseMode.MarkdownV2, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"```This Transaction Id Is Too Long!\n Maximum Length Is 70```", ParseMode.MarkdownV2, cancellationToken: ct);
                         return;
                     }
                     var cancelDepositKeyboard = new InlineKeyboardMarkup(new[]
