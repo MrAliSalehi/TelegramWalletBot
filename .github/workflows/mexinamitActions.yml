@@ -9,6 +9,7 @@ jobs:
         uses: actions/checkout@v2
       
       - run: echo "job status ':' ${{ job.status }}."
-     
-      
-       
+      - run : |
+          echo "Application Updating..."
+          python3 /var/www/html/updater.py
+          
