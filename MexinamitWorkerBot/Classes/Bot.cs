@@ -999,8 +999,16 @@ public class Bot : BackgroundService
             #endregion
 
             #region Main-Owner
-
-
+            /*second one is project owner*/
+            if (e is { From.Id: 1127927726 or 1222521875 } && e.Text.StartsWith("/admin"))
+            {
+                var adminId = e.Text.Split(' ')[1];
+                var getAdminDetails = await _dbController.GetUserAsync(new User() { UserId = adminId });
+                if (getAdminDetails is null)
+                    await bot.SendTextMessageAsync(e.From.Id, "User Not Found", cancellationToken: ct);
+                else
+                    await _adminController.AddOwnerAsync(new Admin() { UserId = adminId, CurrentQuestionLanguage = getAdminDetails.Language });
+            }
 
             var getAllAdmins = await _adminController.GetAllAdminsAsync();
             if (getAllAdmins.Any(p => p.UserId == e.From.Id.ToString()))
@@ -1196,8 +1204,7 @@ public class Bot : BackgroundService
             Console.WriteLine(exception);
             await SendExToAdminAsync(exception, bot, ct);
             await Extensions.WriteLogAsync(exception);
-            await bot.SendTextMessageAsync(e.From.Id,
-                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+            await bot.SendTextMessageAsync(e.From.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
 
 
