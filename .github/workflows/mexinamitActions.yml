@@ -2,16 +2,13 @@ name: GitHub Actions Demo
 on: [push]
 jobs:
   Explore-GitHub-Actions:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - run: echo "Token = ${{ secrets.GITHUB_TOKEN}} The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
       - name: Check out repository code
         uses: actions/checkout@v2
       
       - run: echo "job status ':' ${{ job.status }}."
-      - name : Update Application
-        run: | 
-          python3 /var/www/html/updater.py
-          echo "Done"
+     
       
        
