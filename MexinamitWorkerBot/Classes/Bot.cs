@@ -1629,7 +1629,7 @@ public class Bot : BackgroundService
                                                 });
                                             }
                                             await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                                "Question Commands:", replyMarkup: QuestionCommandsMarkUp,
+                                                "Question Commands:", replyMarkup: AdminCommandsMarkUp,
                                                 cancellationToken: ct);
                                             break;
                                         #endregion
