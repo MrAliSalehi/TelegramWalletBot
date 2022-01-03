@@ -135,7 +135,7 @@ public class Bot : BackgroundService
         { InlineKeyboardButton.WithCallbackData("Add Question","Admin:QuestionCommands:Add"),
             InlineKeyboardButton.WithCallbackData("Remove Question","Admin:QuestionCommands:Remove"), },
         new [] { InlineKeyboardButton.WithCallbackData("Question List", "Admin:QuestionCommands:List:CountrySelect"), },
-        new [] { InlineKeyboardButton.WithCallbackData("Back", "Admin:QuestionCommands:Back:Main"), } });
+        new [] { InlineKeyboardButton.WithCallbackData("Back", "Admin:QuestionCommands:Back:QuestionCommands"), } });
     #endregion
 
     #endregion
