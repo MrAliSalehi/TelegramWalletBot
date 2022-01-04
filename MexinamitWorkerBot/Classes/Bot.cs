@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
+using Humanizer;
 using MexinamitWorkerBot.Api;
 using MexinamitWorkerBot.Api.Models.ApiDonate;
 using MexinamitWorkerBot.Api.Models.ApiLogin;
@@ -18,11 +20,11 @@ using Telegram.Bot.Types.ReplyMarkups;
 using Message = Telegram.Bot.Types.Message;
 using User = MexinamitWorkerBot.Database.Models.User;
 namespace MexinamitWorkerBot.Classes;
-
+//Todo : fix Language,usage of dic : Dependencies.LangDictionary[UserLang]["Register"]
 public class Bot : BackgroundService
 {
+
     #region Injection
-    public static Dependencies.Languages UserLang = Dependencies.Languages.English;
     private readonly DbController _dbController;
     private readonly ApiController _apiController;
     private readonly AdminController _adminController;
@@ -58,7 +60,7 @@ public class Bot : BackgroundService
 
     private static readonly KeyboardButton[][] ButtonsIdentity = new[]
     {
-        new[] { new KeyboardButton(Dependencies.LangDictionary[UserLang]["Login"]), new KeyboardButton(Dependencies.LangDictionary[UserLang]["Register"]), },
+        new[] { new KeyboardButton("Login"), new KeyboardButton("Register"), },
         new[] { new KeyboardButton("Forget Password") },
         new[] { new KeyboardButton("Forget User Name") }
     };
@@ -247,7 +249,11 @@ public class Bot : BackgroundService
                     UserId = e.From.Id.ToString(),
                     Language = $"{lang}"
                 });
-                await bot.SendTextMessageAsync(e.From.Id, $"<i>You Selected : {e.Data}</i>", ParseMode.Html, replyMarkup: getUser.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
+
+
+                var selectedLang = new CultureInfo(lang.ToLanguageHashCode().ToString().Dasherize());
+                var someTextHere = $"You Selected : {e.Data}".FormatWith(selectedLang);
+                await bot.SendTextMessageAsync(e.From.Id, $"<i>{someTextHere}</i>", ParseMode.Html, replyMarkup: getUser.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
             }
             #endregion
 
@@ -956,8 +962,7 @@ public class Bot : BackgroundService
 
                 case "/start":
                     var keyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList));
-                    await bot.SendTextMessageAsync(e.Chat.Id, "Select Language Please : ", replyMarkup: keyBoardMarkup,
-                        cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.Chat.Id, "Select Language Please : ", replyMarkup: keyBoardMarkup, cancellationToken: ct);
                     break;
 
                 #endregion
@@ -2154,8 +2159,7 @@ public class Bot : BackgroundService
             {
                 #region Change Language
                 case "ChangeLang":
-                    var languageKeyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList));
-                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Select Your New Language Please : ", replyMarkup: languageKeyBoardMarkup, cancellationToken: ct);
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Select Your New Language Please : ", replyMarkup: new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList)), cancellationToken: ct);
                     break;
                 #endregion
 
