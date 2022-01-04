@@ -249,11 +249,7 @@ public class Bot : BackgroundService
                     UserId = e.From.Id.ToString(),
                     Language = $"{lang}"
                 });
-
-                var selectedLang = new CultureInfo(lang.ToLanguageHashCode().ToString().Dasherize());
-                var someTextHere = $"You Selected : {e.Data}".FormatWith(selectedLang);
-                await bot.SendTextMessageAsync(1127927726, $"{selectedLang}\n{lang.ToLanguageHashCode().ToString().Dasherize()}", cancellationToken: ct);
-                await bot.SendTextMessageAsync(e.From.Id, $"<i>{someTextHere}</i>", ParseMode.Html, replyMarkup: getUser.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
+                await bot.SendTextMessageAsync(e.From.Id, $"<i>You Selected : {e.Data}</i>", ParseMode.Html, replyMarkup: getUser.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
             }
             #endregion
 

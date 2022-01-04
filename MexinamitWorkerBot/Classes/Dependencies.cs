@@ -31,15 +31,6 @@ public static class Dependencies
         Argentina = 19,
         Swiss = 20,
     }
-    public enum LangHashCode
-    {
-        en_us = 0,
-        es_ar = 1,
-        ar_iq = 2,
-        fr_fr = 3,
-        ru = 4,
-        it_it = 5,
-    }
     public static List<string> LanguagesList => Enum.GetNames(typeof(Languages)).ToList();
 
     public static Dictionary<Languages, Dictionary<string, string>> LangDictionary = new()

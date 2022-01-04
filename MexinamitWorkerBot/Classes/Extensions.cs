@@ -115,6 +115,4 @@ public static class Extensions
 
     public static string ExtractPaymentId(this string mainResponse) => mainResponse.Split(' ')[1];
 
-    public static Dependencies.LangHashCode ToLanguageHashCode(this Dependencies.Languages lang) => (Dependencies.LangHashCode)((int)lang);
-
 }
