@@ -249,7 +249,7 @@ public class Bot : BackgroundService
                     UserId = e.From.Id.ToString(),
                     Language = $"{lang}"
                 });
-                await bot.SendTextMessageAsync(e.From.Id, $"<i>You Selected : {e.Data}\n Currently We Can Only Support English!\nOther Languages Will Add Soon..</i>", ParseMode.Html, replyMarkup: getUser.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
+                await bot.SendTextMessageAsync(e.From.Id, $"<i>You Selected: {e.Data}\n Currently We Can Only Support English!\nOther Languages Will Add Soon..</i>", ParseMode.Html, replyMarkup: getUser.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
             }
             #endregion
 
