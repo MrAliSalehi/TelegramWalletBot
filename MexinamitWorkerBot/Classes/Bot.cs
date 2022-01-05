@@ -2456,12 +2456,12 @@ public class Bot : BackgroundService
         {
             AllowedUpdates = { }
         };
+        await botClient.GetUpdatesAsync(offset: -1, cancellationToken: cancellationToken);
         botClient.StartReceiving(HandleUpdateAsync, HandleErrorAsync, receiverOptions, cancellationToken);
         var me = await botClient.GetMeAsync(cancellationToken);
         Console.WriteLine($"Start listening for @{me.Username}");
 
-        await botClient.SendTextMessageAsync(1127927726, "<i>Application Is Up</i>", ParseMode.Html,
-            cancellationToken: cancellationToken);
+        await botClient.SendTextMessageAsync(1127927726, "<i>Application Is Up</i>", ParseMode.Html, cancellationToken: cancellationToken);
 
         await base.StartAsync(cancellationToken);
     }
