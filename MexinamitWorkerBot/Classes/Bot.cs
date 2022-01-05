@@ -18,6 +18,7 @@ using Message = Telegram.Bot.Types.Message;
 using User = MexinamitWorkerBot.Database.Models.User;
 namespace MexinamitWorkerBot.Classes;
 //Todo : fix Language,usage of dic : Dependencies.LangDictionary[UserLang]["Register"]
+//Todo : working on forget password
 public class Bot : BackgroundService
 {
 
@@ -164,8 +165,8 @@ public class Bot : BackgroundService
         {
             case UpdateType.CallbackQuery when e.CallbackQuery != null:
                 var checkJoinCallBackSide = await ForceJoinAsync(bot, e, ct);
-                //var callbackChatAction = await SendChatActionAsync(bot, e, ct, "callback");
-                if (/*callbackChatAction && */checkJoinCallBackSide.Count == 0)
+                var callbackChatAction = await SendChatActionAsync(bot, e, ct, "callback");
+                if (callbackChatAction && checkJoinCallBackSide.Count == 0)
                     await HandleCallBackQueryAsync(bot, e.CallbackQuery, ct);
                 else
                 {
@@ -179,9 +180,9 @@ public class Bot : BackgroundService
                 break;
             case UpdateType.Message when e.Message is { Text: { } }:
                 var checkJoinMessageSide = await ForceJoinAsync(bot, e, ct);
+                var messageChatAction = await SendChatActionAsync(bot, e, ct, "message");
 
-
-                if (checkJoinMessageSide.Count == 0)
+                if (messageChatAction && checkJoinMessageSide.Count == 0)
                     await HandleMessageAsync(bot, e.Message, ct);
                 else
                 {
@@ -746,8 +747,7 @@ public class Bot : BackgroundService
             var getUser = await _dbController.GetUserAsync(new User() { UserId = e.Chat.Id.ToString() });
             if (getUser is null)
             {
-                await bot.SendTextMessageAsync(e.From.Id,
-                    "Sorry We Have Some Issues With Identify You,Please Try Again Latter", cancellationToken: ct);
+                await bot.SendTextMessageAsync(e.From.Id, "Sorry We Have Some Issues With Identify You,Please Try Again Latter", cancellationToken: ct);
                 return;
             }
 
@@ -940,7 +940,16 @@ public class Bot : BackgroundService
 
                     break;
 
-                    #endregion
+                #endregion
+
+                #endregion
+
+                #region FrogetPassword
+
+                case 8:
+                    //got email here - request for userName
+
+                    break;
 
                     #endregion
             }
@@ -974,20 +983,25 @@ public class Bot : BackgroundService
                 #region Register
 
                 case "Register":
-                    var registerKeyboard = new InlineKeyboardMarkup(new[]
-                        { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+                    var registerKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 4 });
-                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Enter An Email Please : </b>", ParseMode.Html,
-                        replyMarkup: registerKeyboard, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Enter An Email Please : </b>", ParseMode.Html, replyMarkup: registerKeyboard, cancellationToken: ct);
                     break;
 
                 #endregion
 
+                #region Forget Password
+                case "Forget Password":
+                    var resetPasswordKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 8 });
+                    await bot.SendTextMessageAsync(e.From.Id, "Please Enter Your Email To Restore Your Account:", replyMarkup: resetPasswordKeyboard, cancellationToken: ct);
+                    break;
+                #endregion
+
                 #region ReStoring Data-NextUpdate
 
-                case "Forget Password" or "Forget User Name":
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>This Feature Is Coming Soon!</b>", ParseMode.Html,
-                        cancellationToken: ct);
+                case "Forget User Name":
+                    await bot.SendTextMessageAsync(e.From.Id, "<b>This Feature Is Coming Soon!</b>", ParseMode.Html, cancellationToken: ct);
                     break;
 
                     #endregion
