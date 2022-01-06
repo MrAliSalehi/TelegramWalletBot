@@ -9,7 +9,8 @@ using MexinamitWorkerBot.Api.Models.ApiPmAccountData;
 using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAds;
 using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAdsInfo;
 using MexinamitWorkerBot.Api.Models.ApiRegister;
-using MexinamitWorkerBot.Api.Models.ApiRestoreData;
+using MexinamitWorkerBot.Api.Models.ApiRestoreData.ApiForgetPassword;
+using MexinamitWorkerBot.Api.Models.ApiRestoreData.ApiForgetUsername;
 using MexinamitWorkerBot.Api.Models.ApiSecurity.ApiSecurityEncrypt;
 using MexinamitWorkerBot.Api.Models.ApiSubscriptions;
 using MexinamitWorkerBot.Api.Models.ApiSummary;
@@ -436,6 +437,24 @@ public class ApiController
             var request = new RestRequest("/auth/password/reset");
             request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(model));
             var response = await client.PostAsync<ApiForgetPasswordResponse>(request);
+            return response;
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "ForgetPasswordAsync");
+            return null;
+        }
+    }
+
+    [ItemCanBeNull]
+    public async Task<ApiForgetUsernameResponse> ForgetUsernameAsync(ApiForgetUsernameModel model)
+    {
+        try
+        {
+            var client = new RestClient(Dependencies.ApiUrl);
+            var request = new RestRequest("/auth/username/recover");
+            request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(model));
+            var response = await client.PostAsync<ApiForgetUsernameResponse>(request);
             return response;
         }
         catch (Exception e)

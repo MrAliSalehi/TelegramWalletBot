@@ -1,4 +1,4 @@
-﻿namespace MexinamitWorkerBot.Api.Models.ApiRestoreData;
+﻿namespace MexinamitWorkerBot.Api.Models.ApiRestoreData.ApiForgetPassword;
 
 public class ApiForgetPasswordModel
 {

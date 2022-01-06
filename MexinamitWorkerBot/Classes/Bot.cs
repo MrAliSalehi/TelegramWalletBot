@@ -5,6 +5,8 @@ using MexinamitWorkerBot.Api.Models.ApiManualGateways;
 using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAds;
 using MexinamitWorkerBot.Api.Models.ApiRegister;
 using MexinamitWorkerBot.Api.Models.ApiRestoreData;
+using MexinamitWorkerBot.Api.Models.ApiRestoreData.ApiForgetPassword;
+using MexinamitWorkerBot.Api.Models.ApiRestoreData.ApiForgetUsername;
 using MexinamitWorkerBot.Api.Models.ApiSecurity.ApiSecurityEncrypt;
 using MexinamitWorkerBot.Api.Models.ApiVerifyUser;
 using MexinamitWorkerBot.Api.Models.ApiWithdraw;
@@ -975,6 +977,17 @@ public class Bot : BackgroundService
                         await bot.EditMessageTextAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, $"Results Are Back: {forgetPassRequest?.data.result ?? "-"}", cancellationToken: ct);
                     }
                     break;
+                #endregion
+
+                #region ForgetUserName
+
+                case 10:
+                    //got email - send req to api 
+                    var resetUsernameRequest = await _apiController.ForgetUsernameAsync(new ApiForgetUsernameModel() { email = e.Text ?? "-" });
+                    await bot.SendTextMessageAsync(e.From.Id, $"Results Are Back: \n{resetUsernameRequest.HandleApiResponse()}", cancellationToken: ct);
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
+                    break;
+
                     #endregion
             }
 
@@ -1025,7 +1038,9 @@ public class Bot : BackgroundService
                 #region ReStoring Data-NextUpdate
 
                 case "Forget User Name":
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>This Feature Is Coming Soon!</b>", ParseMode.Html, cancellationToken: ct);
+                    var resetUserNameKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 10 });
+                    await bot.SendTextMessageAsync(e.From.Id, "Enter Your Email Address:", replyMarkup: resetUserNameKeyboard, cancellationToken: ct);
                     break;
 
                     #endregion
