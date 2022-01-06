@@ -956,7 +956,7 @@ public class Bot : BackgroundService
                         var pendingUpdate = await bot.SendTextMessageAsync(e.From.Id, "Pending Request", cancellationToken: ct);
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 9 });
                         await _restoreController.NewForgetPasswordAsync(new RestoreData() { UserId = e.From.Id.ToString(), Email = e.Text ?? "-" });
-                        await bot.EditMessageCaptionAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, "Please Enter Your UserName Now: ", cancellationToken: ct);
+                        await bot.EditMessageTextAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, "Please Enter Your UserName Now: ", cancellationToken: ct);
                     }
                     break;
 
