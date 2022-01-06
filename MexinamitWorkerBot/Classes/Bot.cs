@@ -4,11 +4,13 @@ using MexinamitWorkerBot.Api.Models.ApiLogin;
 using MexinamitWorkerBot.Api.Models.ApiManualGateways;
 using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAds;
 using MexinamitWorkerBot.Api.Models.ApiRegister;
+using MexinamitWorkerBot.Api.Models.ApiRestoreData;
 using MexinamitWorkerBot.Api.Models.ApiSecurity.ApiSecurityEncrypt;
 using MexinamitWorkerBot.Api.Models.ApiVerifyUser;
 using MexinamitWorkerBot.Api.Models.ApiWithdraw;
 using MexinamitWorkerBot.Classes.DataBase;
 using MexinamitWorkerBot.Database.Models;
+using Serilog;
 using Telegram.Bot;
 using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
@@ -28,8 +30,10 @@ public class Bot : BackgroundService
     private readonly AdminController _adminController;
     private readonly ForceJoinController _forceJoinController;
     private readonly QuestionController _questionController;
+    private readonly RestoreController _restoreController;
     public Bot()
     {
+        _restoreController = new RestoreController();
         _questionController = new QuestionController();
         _forceJoinController = new ForceJoinController();
         _adminController = new AdminController();
@@ -716,7 +720,7 @@ public class Bot : BackgroundService
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, "HandleCallBackQueryAsync");
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
             await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawStep = 0, DepositStep = 0 });
@@ -761,11 +765,8 @@ public class Bot : BackgroundService
                     {
                         if (!e.Text.Contains(':'))
                         {
-                            await bot.SendTextMessageAsync(e.Chat.Id,
-                                $"<b>Dear {e.Text} </b>\n Please Enter Your Password:", ParseMode.Html,
-                                cancellationToken: ct);
-                            await _dbController.UpdateUserAsync(new User()
-                            { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
+                            await bot.SendTextMessageAsync(e.Chat.Id, $"<b>Dear {e.Text} </b>\n Please Enter Your Password:", ParseMode.Html, cancellationToken: ct);
+                            await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
                         }
                         else
                             await bot.SendTextMessageAsync(e.From.Id,
@@ -944,13 +945,36 @@ public class Bot : BackgroundService
 
                 #endregion
 
-                #region FrogetPassword
+                #region ForgetPassword
 
                 case 8:
                     //got email here - request for userName
-
+                    if (e.Text.Length > 25)
+                        await bot.SendTextMessageAsync(e.From.Id, "Sorry But Your Email Is Too Long ...", cancellationToken: ct);
+                    else
+                    {
+                        var pendingUpdate = await bot.SendTextMessageAsync(e.From.Id, "Pending Request", cancellationToken: ct);
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 9 });
+                        await _restoreController.NewForgetPasswordAsync(new RestoreData() { UserId = e.From.Id.ToString(), Email = e.Text ?? "-" });
+                        await bot.EditMessageCaptionAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, "Please Enter Your UserName Now: ", cancellationToken: ct);
+                    }
                     break;
 
+                case 9:
+                    //Got UserName- Send Request To Api
+                    if (e.Text.Length > 25)
+                        await bot.SendTextMessageAsync(e.From.Id, "Sorry But Your UserName Is Too Long ...", cancellationToken: ct);
+                    else
+                    {
+                        var requestInfo = await _restoreController.GetRequestAsync(e.From.Id);
+                        var pendingUpdate = await bot.SendTextMessageAsync(e.From.Id, "Pending Request", cancellationToken: ct);
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
+                        await _restoreController.UpdateForgetPassRequestAsync(new RestoreData() { UserId = e.From.Id.ToString(), UserName = e.Text ?? "-" });
+                        var forgetPassRequest = await _apiController.ForgetPasswordAsync(new ApiForgetPasswordModel() { email = requestInfo.Email, username = e.Text });
+                        await _restoreController.DeleteRequestAsync(new RestoreData() { UserId = e.From.Id.ToString() });
+                        await bot.EditMessageCaptionAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, $"Results Are Back: {forgetPassRequest?.data.result ?? "-"}", cancellationToken: ct);
+                    }
+                    break;
                     #endregion
             }
 
@@ -1149,7 +1173,7 @@ public class Bot : BackgroundService
         }
         catch (Exception exception)
         {
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, "HandleMessageAsync");
             await bot.SendTextMessageAsync(e.Chat.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
             await SendExToAdminAsync(exception, bot, ct);
         }
@@ -1164,7 +1188,7 @@ public class Bot : BackgroundService
         //    _ => exception.ToString()
         //};
 
-        await Extensions.WriteLogAsync(exception);
+        Log.Error(exception, "HandleErrorAsync");
         Console.WriteLine(exception.Message);
     }
     #endregion
@@ -1195,7 +1219,7 @@ public class Bot : BackgroundService
         catch (Exception ex)
         {
             Console.WriteLine($"User Blocked Bot : {e.Message?.From?.Id}");
-            await Extensions.WriteLogAsync(ex);
+            Log.Error(ex, "SendChatActionAsync");
             return false;
         }
 
@@ -1215,7 +1239,7 @@ public class Bot : BackgroundService
         {
             Console.WriteLine(exception);
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, "OwnerAsync");
             await bot.SendTextMessageAsync(e.From.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
 
@@ -1683,7 +1707,7 @@ public class Bot : BackgroundService
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, "AdminAreaAsync");
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -2148,7 +2172,7 @@ public class Bot : BackgroundService
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, "RegisteredAreaAsync");
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From?.Id ?? e.Chat.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
 
@@ -2213,7 +2237,7 @@ public class Bot : BackgroundService
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, "SettingAreaAsync");
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -2310,7 +2334,7 @@ public class Bot : BackgroundService
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, "SupportAreaAsync");
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -2379,7 +2403,7 @@ public class Bot : BackgroundService
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, "ReferralAreaAsync");
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
@@ -2426,7 +2450,7 @@ public class Bot : BackgroundService
         catch (Exception exception)
         {
             await SendExToAdminAsync(exception, bot, ct);
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, "IdentityAreaAsync");
             Console.WriteLine(exception);
             await bot.SendTextMessageAsync(e.From.Id,
                 "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);

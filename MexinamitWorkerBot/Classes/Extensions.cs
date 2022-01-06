@@ -91,12 +91,6 @@ public static class Extensions
         questions.ForEach(p => results.Add($"Q-{p.Id}:{p.Question1}"));
         return results;
     }
-    public static async Task WriteLogAsync(Exception exception)
-    {
-        Console.WriteLine(exception.Message);
-        await using var write = new StreamWriter("\\Log.txt", true);
-        await write.WriteLineAsync($"--TIME[{DateTime.Now}]-ERROR[{exception}] MESSAGE[{exception.Message}]--");
-    }
     public static void ProcessSubscriptionDetails(this ApiPremiumDetailsResponse apiResponse, out string downloadLimit,
         out string resolutions, out string price, out string watchOn, out string canUseReferral, out string bonus, out string multiLevelPayment)
     {

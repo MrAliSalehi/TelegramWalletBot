@@ -18,6 +18,7 @@ namespace MexinamitWorkerBot.Database.Models
         public virtual DbSet<ForceJoinChannel> ForceJoinChannels { get; set; } = null!;
         public virtual DbSet<Question> Questions { get; set; } = null!;
         public virtual DbSet<User> Users { get; set; } = null!;
+        public virtual DbSet<RestoreData> RestoreData { get; set; } = null!;
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -120,6 +121,20 @@ namespace MexinamitWorkerBot.Database.Models
                     .IsUnicode(false);
 
                 entity.Property(e => e.WithDrawStep).HasDefaultValueSql("((0))");
+            });
+
+            modelBuilder.Entity<RestoreData>(entity =>
+            {
+                entity.Property(e => e.Id).HasColumnName("ID");
+
+                entity.Property(e => e.UserId).HasMaxLength(250).IsUnicode(false);
+
+                entity.Property(e => e.Email).HasMaxLength(350).HasDefaultValueSql("('-')").IsUnicode(false);
+
+                entity.Property(e => e.UserName).HasMaxLength(250).HasDefaultValueSql("('-')").IsUnicode(false);
+
+                entity.Property(e => e.Password).HasMaxLength(450).HasDefaultValueSql("('-')").IsUnicode(false);
+
             });
 
             OnModelCreatingPartial(modelBuilder);

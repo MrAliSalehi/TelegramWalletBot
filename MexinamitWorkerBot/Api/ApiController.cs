@@ -1,4 +1,5 @@
-﻿using MexinamitWorkerBot.Api.Models;
+﻿using JetBrains.Annotations;
+using MexinamitWorkerBot.Api.Models;
 using MexinamitWorkerBot.Api.Models.ApiCreatePayment;
 using MexinamitWorkerBot.Api.Models.ApiDonate;
 using MexinamitWorkerBot.Api.Models.ApiGateways;
@@ -8,6 +9,7 @@ using MexinamitWorkerBot.Api.Models.ApiPmAccountData;
 using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAds;
 using MexinamitWorkerBot.Api.Models.ApiReferral.ApiAdsInfo;
 using MexinamitWorkerBot.Api.Models.ApiRegister;
+using MexinamitWorkerBot.Api.Models.ApiRestoreData;
 using MexinamitWorkerBot.Api.Models.ApiSecurity.ApiSecurityEncrypt;
 using MexinamitWorkerBot.Api.Models.ApiSubscriptions;
 using MexinamitWorkerBot.Api.Models.ApiSummary;
@@ -18,6 +20,7 @@ using MexinamitWorkerBot.Classes;
 using Newtonsoft.Json;
 using RestSharp;
 using RestSharp.Authenticators;
+using Serilog;
 
 namespace MexinamitWorkerBot.Api;
 
@@ -38,8 +41,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            await Extensions.WriteLogAsync(exception);
-            Console.WriteLine(exception);
+            Log.Error(exception, "LoginAsync");
+
             return null;
         }
 
@@ -63,8 +66,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "WithdrawAsync");
             return null;
         }
 
@@ -84,8 +87,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "InfoAsync");
             return null;
         }
 
@@ -108,8 +111,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "BuyReferralAdsAsync");
             return null;
         }
 
@@ -131,8 +134,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "GetReferralAdsInfoAsync");
             return null;
         }
 
@@ -154,8 +157,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "SummaryAsync");
             return null;
         }
 
@@ -177,8 +180,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "BuyPremiumAccountAsync");
             return null;
         }
 
@@ -195,8 +198,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "PremiumDetailsAsync");
             return null;
         }
 
@@ -216,8 +219,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "CheckSubscriptionsAsync");
             return null;
         }
 
@@ -237,8 +240,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "DonateAsync");
             return null;
         }
 
@@ -258,8 +261,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "TransactionsAsync");
             return null;
         }
 
@@ -276,8 +279,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "RegisterUserAsync");
             return null;
         }
 
@@ -297,8 +300,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "GateWaysListAsync");
             return null;
         }
     }
@@ -317,8 +320,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "ManualTransactionAsync ");
             return null;
         }
 
@@ -338,8 +341,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "CheckPaymentAsync ");
             return null;
         }
 
@@ -359,8 +362,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "PerfectMoneyAccountDetailAsync ");
             return null;
         }
 
@@ -380,8 +383,8 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+
+            Log.Error(exception, "CreatePaymentAsync ");
             return null;
         }
 
@@ -402,8 +405,7 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, "EncryptionAsync ");
             return null;
         }
     }
@@ -420,8 +422,25 @@ public class ApiController
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
-            await Extensions.WriteLogAsync(exception);
+            Log.Error(exception, " TwoStepVerifyAsync");
+            return null;
+        }
+    }
+
+    [ItemCanBeNull]
+    public async Task<ApiForgetPasswordResponse> ForgetPasswordAsync(ApiForgetPasswordModel model)
+    {
+        try
+        {
+            var client = new RestClient(Dependencies.ApiUrl);
+            var request = new RestRequest("/auth/password/reset");
+            request.LoadDefaultHeaders().AddJsonBody(JsonConvert.SerializeObject(model));
+            var response = await client.PostAsync<ApiForgetPasswordResponse>(request);
+            return response;
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "ForgetPasswordAsync");
             return null;
         }
     }

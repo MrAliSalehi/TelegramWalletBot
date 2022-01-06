@@ -1,24 +1,33 @@
 using MexinamitWorkerBot.Classes;
-using Version = MexinamitWorkerBot.Version.Version;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 
-if (!File.Exists("Log.txt"))
+try
 {
-    File.Create("Log.txt");
-    Console.WriteLine("Log File Created");
+    Log.Logger = new LoggerConfiguration().MinimumLevel.Override("Microsoft", LogEventLevel.Information).Enrich.FromLogContext()
+        .WriteTo.File("logs.txt", rollingInterval: RollingInterval.Day).WriteTo.Console()
+        .CreateLogger();
+
+    Log.Information("Api Started");
+
+    Console.WriteLine($"Application Running");
+    var host = Host.CreateDefaultBuilder(args)
+        .UseSystemd().ConfigureServices(services =>
+        {
+            services.AddHostedService<Bot>();
+        })
+        .Build();
+    await host.RunAsync();
+
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Host terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
 }
 
-//if (!File.Exists("var.doNotTouchMe"))
-//{
-//    File.Create("var.doNotTouchMe");
-//    Console.WriteLine("Ver. Created");
-//}
-//var getVersion = await Version.HandelVersionAsync(new CancellationToken());
 
-Console.WriteLine($"Application Running");
-var host = Host.CreateDefaultBuilder(args)
-    .UseSystemd().ConfigureServices(services =>
-    {
-        services.AddHostedService<Bot>();
-    })
-    .Build();
-await host.RunAsync();
