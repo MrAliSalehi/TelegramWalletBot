@@ -972,7 +972,7 @@ public class Bot : BackgroundService
                         await _restoreController.UpdateForgetPassRequestAsync(new RestoreData() { UserId = e.From.Id.ToString(), UserName = e.Text ?? "-" });
                         var forgetPassRequest = await _apiController.ForgetPasswordAsync(new ApiForgetPasswordModel() { email = requestInfo.Email, username = e.Text });
                         await _restoreController.DeleteRequestAsync(new RestoreData() { UserId = e.From.Id.ToString() });
-                        await bot.EditMessageCaptionAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, $"Results Are Back: {forgetPassRequest?.data.result ?? "-"}", cancellationToken: ct);
+                        await bot.EditMessageTextAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, $"Results Are Back: {forgetPassRequest?.data.result ?? "-"}", cancellationToken: ct);
                     }
                     break;
                     #endregion
