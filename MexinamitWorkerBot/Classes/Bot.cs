@@ -12,7 +12,10 @@ using MexinamitWorkerBot.Api.Models.ApiVerifyUser;
 using MexinamitWorkerBot.Api.Models.ApiWithdraw;
 using MexinamitWorkerBot.Classes.DataBase;
 using MexinamitWorkerBot.Database.Models;
+using Newtonsoft.Json.Linq;
 using Serilog;
+using System.Diagnostics.Metrics;
+using System.Security.Cryptography;
 using Telegram.Bot;
 using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
@@ -65,7 +68,6 @@ public class Bot : BackgroundService
     private static readonly KeyboardButton[][] ButtonsIdentity = new[]
     {
         new[] { new KeyboardButton("Login"), new KeyboardButton("Register"), },
-        new[] { new KeyboardButton("Forget Password") },
         new[] { new KeyboardButton("Forget User Name") }
     };
 
@@ -253,7 +255,7 @@ public class Bot : BackgroundService
                     UserId = e.From.Id.ToString(),
                     Language = $"{lang}"
                 });
-                await bot.SendTextMessageAsync(e.From.Id, $"<i>You Selected : {e.Data}\n Currently We Can Only Support English!\nOther Languages Will Add Soon..</i>", ParseMode.Html, replyMarkup: getUser.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
+                await bot.SendTextMessageAsync(e.From.Id, $"You Selected : {e.Data}\nChoose an option.", replyMarkup: getUser.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
             }
             #endregion
 
@@ -318,10 +320,8 @@ public class Bot : BackgroundService
                 if (value == "Custom")
                 {
                     await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
-                    await _dbController.UpdateUserAsync(new User()
-                    { UserId = e.From.Id.ToString(), DepositStep = 1 });
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>Please Enter Your Custom Amount:\n (Take Notice Your Amount Must Be More Than 10$,And Your Message Cannot Contains Any Other Thing\n <i> (E.x : 12.43$ or 43.4 )) </i></b>",
-                        ParseMode.Html, cancellationToken: ct);
+                    await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 1 });
+                    await bot.SendTextMessageAsync(e.From.Id, "Enter the amount:\nMinimum amount to deposit 10$", cancellationToken: ct);
                 }
                 #endregion
 
@@ -558,43 +558,7 @@ public class Bot : BackgroundService
                     #region New WithDraw
                     default:
                         {
-                            var paymentKeyboardMarkup = new InlineKeyboardMarkup(new[] {
-                            new [] {
-                                InlineKeyboardButton.WithCallbackData("Payeer",$"FinishWithDraw:{value}:{chatId}:Payeer"),
-                                InlineKeyboardButton.WithCallbackData("WebMoney",$"FinishWithDraw:{value}:{chatId}:WebMoney"),
-                                InlineKeyboardButton.WithCallbackData("TUSD Erc20", $"FinishWithDraw:{value}:{chatId}:TUSD Erc20") },
 
-                            new [] {
-                                InlineKeyboardButton.WithCallbackData("SUSD Erc20",$"FinishWithDraw:{value}:{chatId}:SUSD Erc20"),
-                                InlineKeyboardButton.WithCallbackData("HUSD Erc20",$"FinishWithDraw:{value}:{chatId}:HUSD Erc20"),
-                                InlineKeyboardButton.WithCallbackData("True USD Erc20", $"FinishWithDraw:{value}:{chatId}:True USD Erc20") },
-
-                            new []
-                            {
-                                InlineKeyboardButton.WithCallbackData("Perfect Money",$"FinishWithDraw:{value}:{chatId}:Perfect Money"),
-                                InlineKeyboardButton.WithCallbackData("PUSD Erc20",$"FinishWithDraw:{value}:{chatId}:PUSD Erc20"),
-                                InlineKeyboardButton.WithCallbackData("MUSD Erc20",$"FinishWithDraw:{value}:{chatId}:MUSD Erc20"),
-                            },
-
-                            new [] {
-                                InlineKeyboardButton.WithCallbackData("USDC Erc20",$"FinishWithDraw:{value}:{chatId}:USDC Erc20"),
-                                InlineKeyboardButton.WithCallbackData("GUSD Erc20",$"FinishWithDraw:{value}:{chatId}:GUSD Erc20"),
-                                InlineKeyboardButton.WithCallbackData("BUSD Erc20",$"FinishWithDraw:{value}:{chatId}:BUSD Erc20") },
-                            new [] {
-                                InlineKeyboardButton.WithCallbackData("Tether Trc20", $"FinishWithDraw:{value}:{chatId}:Tether Trc20"),
-                                InlineKeyboardButton.WithCallbackData("Tether Erc20",$"FinishWithDraw:{value}:{chatId}:Tether Erc20"),
-                                InlineKeyboardButton.WithCallbackData("DAI Erc20",$"FinishWithDraw:{value}:{chatId}:DAI Erc20")
-                            },
-                            new []
-                            {
-                                InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"),
-                            }
-
-                            });
-
-                            await _dbController.UpdateUserAsync(new User()
-                            { UserId = e.From.Id.ToString(), WithDrawAmount = value });
-                            await bot.SendTextMessageAsync(e.Message.Chat.Id, " Select Payment Method :", replyMarkup: paymentKeyboardMarkup, cancellationToken: ct);
                             break;
                         }
                     #endregion
@@ -767,14 +731,11 @@ public class Bot : BackgroundService
                     {
                         if (!e.Text.Contains(':'))
                         {
-                            await bot.SendTextMessageAsync(e.Chat.Id, $"<b>Dear {e.Text} </b>\n Please Enter Your Password:", ParseMode.Html, cancellationToken: ct);
+                            await bot.SendTextMessageAsync(e.Chat.Id, $"Dear {e.Text}\nPlease enter the Password:", cancellationToken: ct);
                             await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
                         }
                         else
-                            await bot.SendTextMessageAsync(e.From.Id,
-                                $"<b>Your User Name Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html,
-                                cancellationToken: ct);
-
+                            await bot.SendTextMessageAsync(e.From.Id, $"<b>Your User Name Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
                         break;
                     }
 
@@ -877,15 +838,16 @@ public class Bot : BackgroundService
                 case 4:
                     if (!e.Text.Contains(':'))
                     {
-                        await _dbController.UpdateUserAsync(new User()
-                        { UserId = e.From.Id.ToString(), LoginStep = 5, UserPass = $"{e.Text}" });
-                        await bot.SendTextMessageAsync(e.From.Id,
-                            $"<b>Email :({e.Text}) Submitted!\n Now Please Enter A Strong Password: </b>",
-                            ParseMode.Html, cancellationToken: ct);
+                        var setPassKeyboard = new InlineKeyboardMarkup(new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData("Forget Password","Identity:Register:ForgetPass"),
+                            InlineKeyboardButton.WithCallbackData("Back","Identity:Register:CancelCleanStep"),
+                        });
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 5, UserPass = $"{e.Text}" });
+                        await bot.SendTextMessageAsync(e.From.Id, $"Please enter a strong Password:", replyMarkup: setPassKeyboard, cancellationToken: ct);
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Email Cannot Contains <i>(:)</i>.! </b>",
-                            ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"Your Email Cannot Contains(:)!", cancellationToken: ct);
 
                     break;
 
@@ -906,13 +868,10 @@ public class Bot : BackgroundService
                             LoginStep = 6,
                             UserPass = $"{getUser.UserPass}:{e.Text}"
                         });
-                        await bot.SendTextMessageAsync(e.From.Id,
-                            $"<b>Got It!\n If You Have Any Invitation Link (From Site)\n Please Enter It Here:\n </b> <i>If No,Press Continue</i>",
-                            ParseMode.Html, replyMarkup: continueRegister, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"Please enter the <b>referral code</b> or press \"Continue\"", ParseMode.Html, replyMarkup: continueRegister, cancellationToken: ct);
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>",
-                            ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
 
                     break;
 
@@ -1001,7 +960,7 @@ public class Bot : BackgroundService
 
                 case "/start":
                     var keyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList));
-                    await bot.SendTextMessageAsync(e.Chat.Id, "Select Language Please : ", replyMarkup: keyBoardMarkup, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.Chat.Id, "Please select a language:", replyMarkup: keyBoardMarkup, cancellationToken: ct);
                     break;
 
                 #endregion
@@ -1009,31 +968,26 @@ public class Bot : BackgroundService
                 #region Login
 
                 case "Login":
-                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Please Enter Your User Name :</b>", ParseMode.Html,
-                        cancellationToken: ct);
-                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 1 });
-                    await bot.DeleteMessageAsync(e.Chat.Id, e.MessageId, ct);
+                    await LoginUserAsync(bot, e, ct);
                     break;
 
                 #endregion
 
-                #region Register
+                //#region Register
 
-                case "Register":
-                    var registerKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
-                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 4 });
-                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Enter An Email Please : </b>", ParseMode.Html, replyMarkup: registerKeyboard, cancellationToken: ct);
-                    break;
+                //case "Register":
+                //    await LocalRegisterUserAsync();
+                //    break;
 
-                #endregion
+                //#endregion
 
-                #region Forget Password
-                case "Forget Password":
-                    var resetPasswordKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
-                    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 8 });
-                    await bot.SendTextMessageAsync(e.From.Id, "Please Enter Your Email To Restore Your Account:", replyMarkup: resetPasswordKeyboard, cancellationToken: ct);
-                    break;
-                #endregion
+                //#region Forget Password
+                //case "Forget Password":
+                //    var resetPasswordKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+                //    await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 8 });
+                //    await bot.SendTextMessageAsync(e.From.Id, "Please Enter Your Email To Restore Your Account:", replyMarkup: resetPasswordKeyboard, cancellationToken: ct);
+                //    break;
+                //#endregion
 
                 #region ReStoring Data-NextUpdate
 
@@ -1181,6 +1135,12 @@ public class Bot : BackgroundService
 
 
             #endregion
+
+            #region Local-Funcations
+
+
+
+            #endregion
         }
         catch (TaskCanceledException taskCanceled)
         {
@@ -1202,7 +1162,7 @@ public class Bot : BackgroundService
         //        => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
         //    _ => exception.ToString()
         //};
-
+        await SendExToAdminAsync(exception, botClient, cancellationToken);
         Log.Error(exception, "HandleErrorAsync");
         Console.WriteLine(exception.Message);
     }
@@ -1210,6 +1170,24 @@ public class Bot : BackgroundService
 
     #region Methods
 
+    private async Task LoginUserAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
+    {
+        var identifyKeyboard = new InlineKeyboardMarkup(new[] {
+            InlineKeyboardButton.WithCallbackData("Register", "Identity:Register:BeginRegister"),
+            InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+
+        await bot.SendTextMessageAsync(e.Chat.Id, "Please Enter an Account Number:", replyMarkup: identifyKeyboard, cancellationToken: ct);
+        await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 1 });
+    }
+    private async Task LoginUserAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
+    {
+        var identifyKeyboard = new InlineKeyboardMarkup(new[] {
+            InlineKeyboardButton.WithCallbackData("Register", "Identity:Register:BeginRegister"),
+            InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+
+        await bot.EditMessageCaptionAsync(e.Message.Chat.Id, e.Message.MessageId, "Please Enter an Account Number:", replyMarkup: identifyKeyboard, cancellationToken: ct);
+        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 1 });
+    }
     private static async Task<bool> SendChatActionAsync(ITelegramBotClient bot, Update e, CancellationToken ct, string type)
     {
         try
@@ -1768,27 +1746,53 @@ public class Bot : BackgroundService
                 case 2:
                     if (e.Text.Length > 20)
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, $"```This Amount Is Too Long!\n Maximum Length Is 17```", ParseMode.MarkdownV2, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"This Amount Is Too Long!\n Maximum Length Is 17", cancellationToken: ct);
                         return;
                     }
                     var isValid = e.Text.TryParseAmount(out var parsedAmount);
                     if (isValid)
                     {
-                        await _dbController.UpdateUserAsync(new User()
-                        { UserId = e.From.Id.ToString(), WithDrawAmount = parsedAmount.ToString() });
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawAmount = parsedAmount.ToString() });
+                        var chatId = e.From.Id;
+                        var paymentKeyboardMarkup = new InlineKeyboardMarkup(new[] {
+                                new [] {
+                                InlineKeyboardButton.WithCallbackData("Payeer",$"FinishWithDraw:{parsedAmount}:{chatId}:Payeer"),
+                                InlineKeyboardButton.WithCallbackData("WebMoney",$"FinishWithDraw:{parsedAmount}:{chatId}:WebMoney"),
+                                InlineKeyboardButton.WithCallbackData("TUSD Erc20", $"FinishWithDraw:{parsedAmount}:{chatId}:TUSD Erc20") },
 
-                        var continueCustomWithdrawKeyboard = new InlineKeyboardMarkup(new[]
-                        {
-                        InlineKeyboardButton.WithCallbackData("Continue",$"WithDraw:{parsedAmount}:{e.From.Id}"),
-                        InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"),
-                    });
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Entered Amount Is [{parsedAmount}$]</b>\n If Its Correct Please Press Continue",
-                            ParseMode.Html, replyMarkup: continueCustomWithdrawKeyboard, cancellationToken: ct);
+                                new [] {
+                                InlineKeyboardButton.WithCallbackData("SUSD Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:SUSD Erc20"),
+                                InlineKeyboardButton.WithCallbackData("HUSD Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:HUSD Erc20"),
+                                InlineKeyboardButton.WithCallbackData("True USD Erc20", $"FinishWithDraw:{parsedAmount}:{chatId}:True USD Erc20") },
+                                new []
+                                {
+                                InlineKeyboardButton.WithCallbackData("Perfect Money",$"FinishWithDraw:{parsedAmount}:{chatId}:Perfect Money"),
+                                InlineKeyboardButton.WithCallbackData("PUSD Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:PUSD Erc20"),
+                                InlineKeyboardButton.WithCallbackData("MUSD Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:MUSD Erc20"),
+                                },
+                                new [] {
+                                InlineKeyboardButton.WithCallbackData("USDC Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:USDC Erc20"),
+                                InlineKeyboardButton.WithCallbackData("GUSD Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:GUSD Erc20"),
+                                InlineKeyboardButton.WithCallbackData("BUSD Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:BUSD Erc20") },
+                                new [] {
+                                InlineKeyboardButton.WithCallbackData("Tether Trc20", $"FinishWithDraw:{parsedAmount}:{chatId}:Tether Trc20"),
+                                InlineKeyboardButton.WithCallbackData("Tether Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:Tether Erc20"),
+                                InlineKeyboardButton.WithCallbackData("DAI Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:DAI Erc20")
+                                }, new [] { InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"), } });
+
+
+                        await bot.SendTextMessageAsync(e.From.Id, " Select Payment Method :", replyMarkup: paymentKeyboardMarkup, cancellationToken: ct);
+
+                        //var continueCustomWithdrawKeyboard = new InlineKeyboardMarkup(new[]
+                        //{
+                        //InlineKeyboardButton.WithCallbackData("Continue",$"WithDraw:{parsedAmount}:{e.From.Id}"),
+                        //InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"), });
+
+                        // await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Entered Amount Is [{parsedAmount}$]</b>\n If Its Correct Please Press Continue", ParseMode.Html, replyMarkup: //continueCustomWithdrawKeyboard, cancellationToken: ct);
                     }
                     else
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, "<b>Please Enter A Valid Number.\n Amount Must Be More Than 10.0 $</b> ",
-                            ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, "Minimum amount to deposit 10$ ", cancellationToken: ct);
                     }
                     break;
 
@@ -1833,7 +1837,7 @@ public class Bot : BackgroundService
                 case 1:
                     if (e.Text?.Length > 20)
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, $"```This Amount Is Too Long!\n Maximum Length Is 17```", ParseMode.MarkdownV2, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, "This Amount Is Too Long!\nMaximum Length Is 17", cancellationToken: ct);
                         return;
                     }
                     var isValid = e.Text.TryParseAmount(out var parsedAmount);
@@ -2012,9 +2016,9 @@ public class Bot : BackgroundService
                     new []
                     {
                         InlineKeyboardButton.WithCallbackData("Enter Custom Amount",$"Deposit:Custom:{e.Chat.Id}"),
-                        InlineKeyboardButton.WithCallbackData("Cancel",$"Deposit:Cancel:-"),
-                    } });
-                    await bot.SendTextMessageAsync(e.Chat.Id, "<b>Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue :</b> ", ParseMode.Html, replyMarkup: valuesKeyboardMarkup, cancellationToken: ct);
+                        InlineKeyboardButton.WithCallbackData("Cancel",$"Deposit:Cancel:-"), } });
+
+                    await bot.SendTextMessageAsync(e.Chat.Id, "Select an option or press \"Enter Custom Amount\" to deposit another amount.", replyMarkup: valuesKeyboardMarkup, cancellationToken: ct);
                     break;
                 #endregion
 
@@ -2439,6 +2443,38 @@ public class Bot : BackgroundService
                 case "Register":
                     switch (splitData[2])
                     {
+                        #region startRegister
+
+                        case "BeginRegister":
+                            var registerKeyboard = new InlineKeyboardMarkup(new[]
+                            {
+                                InlineKeyboardButton.WithCallbackData("I Have An Account", "Identity:Register:BeginLogin"),
+                                InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"),
+                            });
+                            await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 4 });
+                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Please enter the ‌Email:", replyMarkup: registerKeyboard, cancellationToken: ct);
+                            break;
+
+                        #endregion
+
+                        #region BeginLogin
+                        case "BeginLogin":
+                            await LoginUserAsync(bot, e, ct);
+                            break;
+                        #endregion
+
+                        #region Forget Password
+
+                        case "ForgetPass":
+                            var resetPassKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+
+                            await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 8 });
+                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Please Enter Your Email To Restore Your Account:", replyMarkup: resetPassKeyboard
+                                , cancellationToken: ct);
+                            break;
+
+                        #endregion
+
                         #region Finish Register
                         case "ContinueWithOutLink":
                             await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
@@ -2481,8 +2517,6 @@ public class Bot : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-
-
             // cts.Cancel();
         }
     }
