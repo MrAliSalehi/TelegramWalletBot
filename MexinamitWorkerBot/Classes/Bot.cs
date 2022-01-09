@@ -511,7 +511,7 @@ public class Bot : BackgroundService
                                 {
                                     var paymentId = paymentStatus.data.ExtractPaymentId();
                                     await bot.SendTextMessageAsync(1127927726, $"result:[{paymentStatus.data}]\nextracted:[{paymentId}]", cancellationToken: ct);
-                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"Your Request` ` `s Results Are Back :\n```{paymentId ?? "Nothing Found"}```", ParseMode.MarkdownV2, cancellationToken: ct);
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"Your Request\\`s Results Are Back :\n``` {paymentId ?? "Nothing Found"} ```", ParseMode.MarkdownV2, cancellationToken: ct);
                                 }
 
                                 else
