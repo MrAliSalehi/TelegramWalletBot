@@ -1185,7 +1185,7 @@ public class Bot : BackgroundService
             InlineKeyboardButton.WithCallbackData("Register", "Identity:Register:BeginRegister"),
             InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
 
-        await bot.EditMessageCaptionAsync(e.Message.Chat.Id, e.Message.MessageId, "Please Enter an Account Number:", replyMarkup: identifyKeyboard, cancellationToken: ct);
+        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Please Enter an Account Number:", replyMarkup: identifyKeyboard, cancellationToken: ct);
         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 1 });
     }
     private static async Task<bool> SendChatActionAsync(ITelegramBotClient bot, Update e, CancellationToken ct, string type)
@@ -1779,7 +1779,6 @@ public class Bot : BackgroundService
                                 InlineKeyboardButton.WithCallbackData("Tether Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:Tether Erc20"),
                                 InlineKeyboardButton.WithCallbackData("DAI Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:DAI Erc20")
                                 }, new [] { InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"), } });
-
 
                         await bot.SendTextMessageAsync(e.From.Id, " Select Payment Method :", replyMarkup: paymentKeyboardMarkup, cancellationToken: ct);
 
