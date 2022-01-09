@@ -67,7 +67,7 @@ public class Bot : BackgroundService
 
     private static readonly KeyboardButton[][] ButtonsIdentity = new[]
     {
-        new[] { new KeyboardButton("Login"), new KeyboardButton("Register"), },
+        new[] { new KeyboardButton("Login")},
         new[] { new KeyboardButton("Forget User Name") }
     };
 
