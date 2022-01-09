@@ -508,7 +508,10 @@ public class Bot : BackgroundService
                                 var paymentStatus = await _apiController.ManualTransactionAsync(new ApiManualGatewaysModel()
                                 { amount = getUser.DepositAmount ?? "", account = getUser.DepositAccount ?? "", transaction_id = splitData[2], manual_account = getUser.ManualAccount ?? "" }, getUser.Token ?? "");
                                 if (paymentStatus?.status is 200 or 201)
-                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"Your Request`s Results Are Back :\n{paymentStatus?.data ?? "Nothing Found"}", ParseMode.MarkdownV2, cancellationToken: ct);
+                                {
+                                    var paymentId = paymentStatus.data.ExtractPaymentId();
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"Your Request`s Results Are Back :\n```{paymentId ?? "Nothing Found"}```", ParseMode.MarkdownV2, cancellationToken: ct);
+                                }
 
                                 else
                                     await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>We Got Some Problems:\n{paymentStatus?.data}</i>", ParseMode.Html, cancellationToken: ct);
