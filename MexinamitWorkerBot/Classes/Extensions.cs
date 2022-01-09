@@ -107,6 +107,10 @@ public static class Extensions
         multiLevelPayment = apiResponse.Data.First().MultiLevelPayment == 1 ? "Multi Level Bonus" : "Bonus Limited";
     }
 
-    public static string ExtractPaymentId(this string mainResponse) => mainResponse.Split(' ')[1];
+    public static string ExtractPaymentId(this string mainResponse)
+    {
+        var firstSplit = mainResponse.Split(' ')[1];
+        return firstSplit.Split(' ')[0];
 
+    }
 }
