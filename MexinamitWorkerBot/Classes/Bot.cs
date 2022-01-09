@@ -460,7 +460,8 @@ public class Bot : BackgroundService
                                 InlineKeyboardButton.WithCallbackData("Continue", $"ConfirmSiteAccDeposit:-"),
                                 InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"),
                             });
-                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"Here Is Our {selected.manual_gateways.name} Account Number : \n ```{selected.account}```", ParseMode.MarkdownV2, replyMarkup: cancelKeyboard, cancellationToken: ct);
+                            var message = splitData[3] == "WebMoney" ? $"Transfer the amount to the WebMoney account \"{selected.account}\" And Press \"<b>Continue</b>\"\n\nMinimum deposit amount 10$" : $"Here Is Our {selected.manual_gateways.name} Account Number:\n{selected.account}";
+                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, message, ParseMode.Html, replyMarkup: cancelKeyboard, cancellationToken: ct);
                             await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), ManualAccount = selected.account });
                         }
                         break;
@@ -507,7 +508,7 @@ public class Bot : BackgroundService
                                 var paymentStatus = await _apiController.ManualTransactionAsync(new ApiManualGatewaysModel()
                                 { amount = getUser.DepositAmount ?? "", account = getUser.DepositAccount ?? "", transaction_id = splitData[2], manual_account = getUser.ManualAccount ?? "" }, getUser.Token ?? "");
                                 if (paymentStatus?.status is 200 or 201)
-                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>Your Request`s Results Are Back :</i>\n<b>{paymentStatus?.data ?? "Nothing Found"}</b>", ParseMode.Html, cancellationToken: ct);
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"Your Request`s Results Are Back :\n{paymentStatus?.data ?? "Nothing Found"}", ParseMode.MarkdownV2, cancellationToken: ct);
 
                                 else
                                     await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>We Got Some Problems:\n{paymentStatus?.data}</i>", ParseMode.Html, cancellationToken: ct);
@@ -521,7 +522,7 @@ public class Bot : BackgroundService
                 else
                 {
                     var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"), });
-                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "<b>Now Please Enter Your Account Number:</b>", ParseMode.Html, replyMarkup: cancelKeyboard, cancellationToken: ct);
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Now Please Enter Your Account Number:", replyMarkup: cancelKeyboard, cancellationToken: ct);
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 2 });
                 }
 
@@ -1865,7 +1866,7 @@ public class Bot : BackgroundService
                 case 2:
                     var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"), });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAccount = e.Text, DepositStep = 3 });
-                    await bot.SendTextMessageAsync(e.From.Id, $"```Please Enter Your Transaction/Operation ID: ```", ParseMode.MarkdownV2, replyMarkup: cancelKeyboard, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.From.Id, $"Please enter the <b>Transaction ID:</b>", ParseMode.Html, replyMarkup: cancelKeyboard, cancellationToken: ct);
                     break;
                 #endregion
 
