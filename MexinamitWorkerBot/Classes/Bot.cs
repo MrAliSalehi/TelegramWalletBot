@@ -1885,7 +1885,7 @@ public class Bot : BackgroundService
                     });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 0 });
                     await bot.SendTextMessageAsync(e.From.Id,
-                        $"<i>Here Is Your Check List:</i> \n If its True Please Press Confirm.\n<b>Account Number:{user.DepositAccount}\nDeposit Amount: {user.DepositAmount}$\nTransaction ID: {e.Text}\nAccount You Submitted For: {user.ManualAccount}</b>", ParseMode.Html, replyMarkup: cancelDepositKeyboard, cancellationToken: ct);
+                        $"Check the list:\nSource Account Number:{user.DepositAccount}\nTransaction ID:{e.Text}\nTransfer Amount:{user.DepositAmount}$\nDestination Account Number:{user.ManualAccount}\n\nPress \"OK\" if the information is correct.", replyMarkup: cancelDepositKeyboard, cancellationToken: ct);
                     break;
                     #endregion
 
