@@ -501,7 +501,6 @@ public class Bot : BackgroundService
                                 }
                                 else
                                     await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Sorry Right Now Our Service Is Not Available ", cancellationToken: ct);
-
                             }
                             else
                             {
@@ -524,7 +523,7 @@ public class Bot : BackgroundService
                 else
                 {
                     var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"), });
-                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Now Please Enter Your Account Number:", replyMarkup: cancelKeyboard, cancellationToken: ct);
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Enter the Account Number:\nExample: Z10101010101", replyMarkup: cancelKeyboard, cancellationToken: ct);
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 2 });
                 }
 
