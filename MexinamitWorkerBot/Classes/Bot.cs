@@ -81,10 +81,11 @@ public class Bot : BackgroundService
     private static readonly InlineKeyboardMarkup IdentifyKeyboard = new(new[] {
         InlineKeyboardButton.WithCallbackData("Register", "Identity:Register:BeginRegister"),
         InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+
     private static readonly InlineKeyboardMarkup RegisterKeyboard = new(new[]
     {
         InlineKeyboardButton.WithCallbackData("I Have An Account", "Identity:Register:BeginLogin"),
-        InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"),
+        InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:Back:CancelCleanStep"),
     });
     private static readonly InlineKeyboardMarkup ResetPassKeyboard = new(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
     #endregion
@@ -1185,12 +1186,12 @@ public class Bot : BackgroundService
     #region Login-Overlords
     private async Task LoginUserAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
     {
-        await bot.SendTextMessageAsync(e.Chat.Id, "Please Enter an Account Number:", replyMarkup: IdentifyKeyboard, cancellationToken: ct);
+        await bot.SendTextMessageAsync(e.Chat.Id, "Please Enter The Account Number:", replyMarkup: IdentifyKeyboard, cancellationToken: ct);
         await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 1 });
     }
     private async Task LoginUserAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
     {
-        await bot.EditMessageTextAsync(e.Message!.Chat.Id, e.Message.MessageId, "Please Enter an Account Number:", replyMarkup: IdentifyKeyboard, cancellationToken: ct);
+        await bot.EditMessageTextAsync(e.Message!.Chat.Id, e.Message.MessageId, "Please Enter The Account Number:", replyMarkup: IdentifyKeyboard, cancellationToken: ct);
         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 1 });
     }
     #endregion
@@ -1200,12 +1201,14 @@ public class Bot : BackgroundService
     private async Task RegisterUserAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
     {
         if (e.From is null) return;
+
         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 4 });
         await bot.SendTextMessageAsync(e.From.Id, "Please enter the ‌Email:", replyMarkup: RegisterKeyboard, cancellationToken: ct);
     }
     private async Task RegisterUserAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
     {
         if (e.Message is null) return;
+
         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 4 });
         await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Please enter the ‌Email:", replyMarkup: RegisterKeyboard, cancellationToken: ct);
     }
