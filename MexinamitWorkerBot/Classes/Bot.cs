@@ -468,7 +468,7 @@ public class Bot : BackgroundService
                                 InlineKeyboardButton.WithCallbackData("Continue", $"ConfirmSiteAccDeposit:-"),
                                 InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"),
                             });
-                            var message = splitData[3] == "Web Money" ? $"Transfer the amount to the WebMoney account \"{selected.account}\" And Press \"<b>Continue</b>\"\n\nMinimum deposit amount 10$" : $"Here Is Our {selected.manual_gateways.name} Account Number:\n{selected.account}";
+                            var message = splitData[3] == "Web Money" ? $"Transfer the amount to the WebMoney account \"{selected.account}\" And Press \"<b>Continue</b>\"\n\nMinimum deposit amount 10$" : $"Enter The{selected.manual_gateways.name} Account Number:\n{selected.account}";
                             await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, message, ParseMode.Html, replyMarkup: cancelKeyboard, cancellationToken: ct);
                             await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), ManualAccount = selected.account });
                         }
