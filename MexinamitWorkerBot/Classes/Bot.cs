@@ -67,8 +67,8 @@ public class Bot : BackgroundService
 
     private static readonly KeyboardButton[][] ButtonsIdentity = new[]
     {
-        new[] { new KeyboardButton("Login")},
-        new[] { new KeyboardButton("Forget User Name") }
+        new[] { new KeyboardButton("Login"), new KeyboardButton("Register")},
+        new[] { new KeyboardButton("Forget User Name"),new KeyboardButton("Forget Password") }
     };
 
     private static readonly ReplyKeyboardMarkup IdentityKeyboardMarkup = new(ButtonsIdentity)
@@ -78,7 +78,15 @@ public class Bot : BackgroundService
         OneTimeKeyboard = false,
         ResizeKeyboard = true
     };
-
+    private static readonly InlineKeyboardMarkup IdentifyKeyboard = new(new[] {
+        InlineKeyboardButton.WithCallbackData("Register", "Identity:Register:BeginRegister"),
+        InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+    private static readonly InlineKeyboardMarkup RegisterKeyboard = new(new[]
+    {
+        InlineKeyboardButton.WithCallbackData("I Have An Account", "Identity:Register:BeginLogin"),
+        InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"),
+    });
+    private static readonly InlineKeyboardMarkup ResetPassKeyboard = new(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
     #endregion
 
     #region MainMenu
@@ -971,6 +979,20 @@ public class Bot : BackgroundService
 
                 #endregion
 
+                #region Register
+
+                case "Register":
+                    await RegisterUserAsync(bot, e, ct);
+                    break;
+
+                #endregion
+
+                #region ForgetPassword
+                case "Forget Password":
+                    await ForgetPasswordAsync(bot, e, ct);
+                    break;
+                #endregion
+
                 #region Login
 
                 case "Login":
@@ -1160,24 +1182,53 @@ public class Bot : BackgroundService
 
     #region Methods
 
+    #region Login-Overlords
     private async Task LoginUserAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
     {
-        var identifyKeyboard = new InlineKeyboardMarkup(new[] {
-            InlineKeyboardButton.WithCallbackData("Register", "Identity:Register:BeginRegister"),
-            InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
-
-        await bot.SendTextMessageAsync(e.Chat.Id, "Please Enter an Account Number:", replyMarkup: identifyKeyboard, cancellationToken: ct);
+        await bot.SendTextMessageAsync(e.Chat.Id, "Please Enter an Account Number:", replyMarkup: IdentifyKeyboard, cancellationToken: ct);
         await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 1 });
     }
     private async Task LoginUserAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
     {
-        var identifyKeyboard = new InlineKeyboardMarkup(new[] {
-            InlineKeyboardButton.WithCallbackData("Register", "Identity:Register:BeginRegister"),
-            InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
-
-        await bot.EditMessageTextAsync(e.Message!.Chat.Id, e.Message.MessageId, "Please Enter an Account Number:", replyMarkup: identifyKeyboard, cancellationToken: ct);
+        await bot.EditMessageTextAsync(e.Message!.Chat.Id, e.Message.MessageId, "Please Enter an Account Number:", replyMarkup: IdentifyKeyboard, cancellationToken: ct);
         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 1 });
     }
+    #endregion
+
+    #region Register-Overlords
+
+    private async Task RegisterUserAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
+    {
+        if (e.From is null) return;
+        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 4 });
+        await bot.SendTextMessageAsync(e.From.Id, "Please enter the ‌Email:", replyMarkup: RegisterKeyboard, cancellationToken: ct);
+    }
+    private async Task RegisterUserAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
+    {
+        if (e.Message is null) return;
+        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 4 });
+        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Please enter the ‌Email:", replyMarkup: RegisterKeyboard, cancellationToken: ct);
+    }
+
+    #endregion
+
+    #region ForgetPass-Overlords
+
+    private async Task ForgetPasswordAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
+    {
+        if (e.From is null) return;
+        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 8 });
+        await bot.SendTextMessageAsync(e.From.Id, "Please Enter Your Email To Restore Your Account:", replyMarkup: ResetPassKeyboard, cancellationToken: ct);
+    }
+    private async Task ForgetPasswordAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
+    {
+        if (e.Message is null) return;
+        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 8 });
+        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Please Enter Your Email To Restore Your Account:", replyMarkup: ResetPassKeyboard
+            , cancellationToken: ct);
+    }
+    #endregion
+
     private static async Task<bool> SendChatActionAsync(ITelegramBotClient bot, Update e, CancellationToken ct, string type)
     {
         try
@@ -2435,13 +2486,7 @@ public class Bot : BackgroundService
                         #region startRegister
 
                         case "BeginRegister":
-                            var registerKeyboard = new InlineKeyboardMarkup(new[]
-                            {
-                                InlineKeyboardButton.WithCallbackData("I Have An Account", "Identity:Register:BeginLogin"),
-                                InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"),
-                            });
-                            await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 4 });
-                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Please enter the ‌Email:", replyMarkup: registerKeyboard, cancellationToken: ct);
+                            await RegisterUserAsync(bot, e, ct);
                             break;
 
                         #endregion
@@ -2455,11 +2500,7 @@ public class Bot : BackgroundService
                         #region Forget Password
 
                         case "ForgetPass":
-                            var resetPassKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
-
-                            await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 8 });
-                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Please Enter Your Email To Restore Your Account:", replyMarkup: resetPassKeyboard
-                                , cancellationToken: ct);
+                            await ForgetPasswordAsync(bot, e, ct);
                             break;
 
                         #endregion
