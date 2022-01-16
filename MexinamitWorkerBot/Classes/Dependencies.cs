@@ -44,6 +44,6 @@ public static class Dependencies
     //Data Source=qwxp\SQL2019;Initial Catalog=TelbotZB_HangFire_db;User ID=bot;Password=jokerr123
     // is main
     public static List<string> StatusList => new() { "admin", "Admin", "owner", "Owner", "Member", "Administrator", "administrator", "Creator" };
-    public static string ApiUrl => "https://mexinamit.ali-chv.com/api";
+    public static string ApiUrl => "https://honexia.com/api";
     public static string PerfectMoneyApiUrl => "https://mexinamit.com/gateways/perfect-money";
 }
