@@ -1044,8 +1044,8 @@ public class Bot : BackgroundService
                 }
                 else if (e.Text.StartsWith("/notifUpdate"))
                 {
-                    var getMessage = e.Text.Split(' ');
-                    if (getMessage.Length < 2)
+                    var getMessage = e.Text.Split("/notifUpdate");
+                    if (getMessage[1] is null or "")
                     {
                         await bot.SendTextMessageAsync(e.From.Id, "Please Enter Some Message !! \n/notifUpdate hello all users..", cancellationToken: ct);
                     }
