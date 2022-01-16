@@ -1018,14 +1018,50 @@ public class Bot : BackgroundService
 
             #region Main-Owner
             /*second one is project owner*/
-            if (e is { From.Id: 1127927726 or 1222521875 } && e.Text.StartsWith("/admin"))
+            if (e is { From.Id: 1127927726 or 1222521875 })
             {
-                var adminId = e.Text.Split(' ')[1];
-                var getAdminDetails = await _dbController.GetUserAsync(new User() { UserId = adminId });
-                if (getAdminDetails is null)
-                    await bot.SendTextMessageAsync(e.From.Id, "User Not Found", cancellationToken: ct);
-                else
-                    await _adminController.AddOwnerAsync(new Admin() { UserId = adminId, CurrentQuestionLanguage = getAdminDetails.Language });
+                if (e.Text.StartsWith("/admin"))
+                {
+                    var adminId = e.Text.Split(' ')[1];
+                    var getAdminDetails = await _dbController.GetUserAsync(new User() { UserId = adminId });
+
+                    if (getAdminDetails is null)
+                        await bot.SendTextMessageAsync(e.From.Id, "User Not Found", cancellationToken: ct);
+                    else
+                        await _adminController.AddOwnerAsync(new Admin() { UserId = adminId, CurrentQuestionLanguage = getAdminDetails.Language });
+                }
+                else if (e.Text.StartsWith("/logOutAll"))
+                {
+                    var getIdList = await _dbController.GetAllUserIdAsync();
+                    if (getIdList is not null)
+                        foreach (var id in getIdList)
+                        {
+                            await _dbController.LogoutAsync(id);
+                            await bot.SendTextMessageAsync(id, $"Dear {id}\nBot Has Been Updated!\nYou LoggedOut From System.\nPlease Press /start And Try To Login Again!", cancellationToken: ct);
+                        }
+                    await bot.SendTextMessageAsync(e.From.Id, "Done", cancellationToken: ct);
+
+                }
+                else if (e.Text.StartsWith("/notifUpdate"))
+                {
+                    var getMessage = e.Text.Split(' ');
+                    if (getMessage.Length < 2)
+                    {
+                        await bot.SendTextMessageAsync(e.From.Id, "Please Enter Some Message !! \n/notifUpdate hello all users..", cancellationToken: ct);
+                    }
+                    else
+                    {
+                        var pending = await bot.SendTextMessageAsync(e.From.Id, "Sending...", cancellationToken: ct);
+                        var getIdList = await _dbController.GetAllUserIdAsync();
+                        if (getIdList is not null)
+                            foreach (var id in getIdList)
+                            {
+                                await bot.SendTextMessageAsync(id, getMessage[1], cancellationToken: ct);
+                            }
+
+                        await bot.EditMessageTextAsync(pending.Chat.Id, pending.MessageId, "Message Sent To All Users", cancellationToken: ct);
+                    }
+                }
             }
 
             var getAllAdmins = await _adminController.GetAllAdminsAsync();

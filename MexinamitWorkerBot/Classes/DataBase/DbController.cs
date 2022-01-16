@@ -1,5 +1,7 @@
-﻿using MexinamitWorkerBot.Database.Models;
+﻿using JetBrains.Annotations;
+using MexinamitWorkerBot.Database.Models;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace MexinamitWorkerBot.Classes.DataBase;
 
@@ -147,4 +149,21 @@ public class DbController
             return false;
         }
     }
+
+    [ItemCanBeNull]
+    public async Task<List<string>> GetAllUserIdAsync()
+    {
+        try
+        {
+            await using var db = new TelegramWallet_DbContext();
+            var getAllUsers = await db.Users.Select(p => p.UserId).ToListAsync();
+            return getAllUsers;
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "GetAllUserIdAsync");
+            return null;
+        }
+    }
+
 }
