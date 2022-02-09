@@ -16,11 +16,14 @@ using Newtonsoft.Json.Linq;
 using Serilog;
 using System.Diagnostics.Metrics;
 using System.Security.Cryptography;
+using System.Threading.Channels;
 using Telegram.Bot;
 using Telegram.Bot.Extensions.Polling;
+using Telegram.Bot.Requests.Abstractions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using static MexinamitWorkerBot.Classes.Dependencies;
 using Message = Telegram.Bot.Types.Message;
 using User = MexinamitWorkerBot.Database.Models.User;
 namespace MexinamitWorkerBot.Classes;
@@ -192,7 +195,9 @@ public class Bot : BackgroundService
                     {
                         notJoinedChannels += $"@{p.ChId}\n";
                     });
-                    await bot.SendTextMessageAsync(e.CallbackQuery.From.Id, $"Dear {e.CallbackQuery.From.Id}, You Did`nt Join In This Channel(s): \n {notJoinedChannels}\n To Use This Bot, Please First Join This Channel(s)", cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.CallbackQuery.From.Id,
+                        $"Dear {e.CallbackQuery.From.Id}, You Did`nt Join In This Channel(s): \n {notJoinedChannels}\n To Use This Bot, Please First Join This Channel(s)",
+                        cancellationToken: ct);
                 }
                 break;
             case UpdateType.Message when e.Message is { Text: { } }:
@@ -232,7 +237,7 @@ public class Bot : BackgroundService
         foreach (var channel in getChannels)
         {
             var joinStatus = await bot.GetChatMemberAsync($"@{channel.ChId}", Convert.ToInt64(userId), ct);
-            if (!Dependencies.StatusList.Contains(joinStatus.Status.ToString()))
+            if (!StatusList.Contains(joinStatus.Status.ToString()))
             {
                 results.Add(channel);
             }
@@ -251,20 +256,24 @@ public class Bot : BackgroundService
             await bot.SendTextMessageAsync(e.From.Id, "We Have Trouble With Finding Your Information In Service!\n Please Try Again Latter", cancellationToken: ct);
             return;
         }
+
+        var canParse = Enum.TryParse(getUser.Language!, true, out Languages userLang);
+        if (!canParse) userLang = Languages.English;
+
         try
         {
 
             #region Select Language
-            if (Dependencies.LanguagesList.Contains($"{e.Data}"))
+            if (LanguagesList.Contains($"{e.Data}"))
             {
                 await bot.DeleteMessageAsync(e.From.Id, e.Message.MessageId, ct);
-                Enum.TryParse(e.Data, out Dependencies.Languages lang);
+                Enum.TryParse(e.Data, out Languages lang);
                 await _dbController.UpdateUserAsync(new User()
                 {
                     UserId = e.From.Id.ToString(),
                     Language = $"{lang}"
                 });
-                await bot.SendTextMessageAsync(e.From.Id, $"You Selected : {e.Data}\nChoose an option.", replyMarkup: getUser.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
+                await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[lang]["You Selected:"]} {e.Data}\n{LangDictionary[lang]["Choose an option."]}", replyMarkup: getUser.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
             }
             #endregion
 
@@ -276,7 +285,7 @@ public class Bot : BackgroundService
                 var chatId = Convert.ToInt32(splitData[2]);
                 var buySub = await _apiController.BuyPremiumAccountAsync(getUser.Token ?? "");
                 if (buySub is null)
-                    await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"This Service Is InActive\nPlease Try Again Latter!", cancellationToken: ct);
+                    await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"{LangDictionary[userLang]["This Service Is InActive.Please Try Again Latter!"]}", cancellationToken: ct);
 
                 else
                 {
@@ -284,13 +293,13 @@ public class Bot : BackgroundService
                     {
                         case 201:
                         case 200:
-                            await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"User {chatId}, you Ordered {order}.\n {buySub.message}", cancellationToken: ct);
+                            await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"{LangDictionary[userLang]["Dear"]} {chatId},{LangDictionary[userLang]["you Ordered "]} {order}.\n {buySub.message}", cancellationToken: ct);
                             break;
                         case 401 or 405:
-                            await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"Authentication Failed\n Please Try To Login Again", cancellationToken: ct);
+                            await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"{LangDictionary[userLang]["Authentication Failed.Please Try To Login Again"]}", cancellationToken: ct);
                             break;
                         default:
-                            await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"Operation Failed!\n {buySub.message} ", cancellationToken: ct);
+                            await bot.EditMessageTextAsync(chatId, e.Message.MessageId, $"{LangDictionary[userLang]["Operation Failed!"]}\n {buySub.message} ", cancellationToken: ct);
                             break;
                     }
                 }
@@ -330,7 +339,7 @@ public class Bot : BackgroundService
                 {
                     await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 1 });
-                    await bot.SendTextMessageAsync(e.From.Id, "Enter the amount:\nMinimum amount to deposit 10$", cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Enter the amount:"]}\n{LangDictionary[userLang]["Minimum amount to deposit 10$"]}", cancellationToken: ct);
                 }
                 #endregion
 
@@ -338,7 +347,7 @@ public class Bot : BackgroundService
                 else if (value == "Cancel")
                 {
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 0 });
-                    await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, "<b>Transaction Has Been Canceled</b>", ParseMode.Html, cancellationToken: ct);
+                    await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, $"<b>{LangDictionary[userLang]["Transaction Has Been Canceled"]}</b>", ParseMode.Html, cancellationToken: ct);
                 }
                 #endregion
 
@@ -375,12 +384,12 @@ public class Bot : BackgroundService
                     },
                     new []
                     {
-                        InlineKeyboardButton.WithCallbackData("Cancel","Deposit:Cancel:-"),
+                        InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}","Deposit:Cancel:-"),
                     }
 
                     });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAmount = value });
-                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, " Select Payment Method :", replyMarkup: continueKeyboardMarkup, cancellationToken: ct);
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"{LangDictionary[userLang]["Select Payment Method:"]}", replyMarkup: continueKeyboardMarkup, cancellationToken: ct);
                 }
                 #endregion
 
@@ -395,51 +404,19 @@ public class Bot : BackgroundService
                 var paymentMethodNameReplace = splitData[3].ReplacePaymentName();
                 switch (paymentMethodNameReplace)
                 {
-                    #region Removed
-                    #region WebMoney
-
-                    //    
-                    //    await bot.SendTextMessageAsync(e.From.Id, "Please Send Your Deposit Amount : ", replyMarkup: cancelKeyboard, cancellationToken: ct);
-                    //    break;
-                    #endregion
-                    #region Perfect Money-Payeer-PerfectMoney
-                    //case "Payeer":
-                    //case "WebMoney":
-                    //case "Perfect Money":
-                    //    
-                    //    break;
-                    #endregion
-                    #region Bitcoin-DogeCoin-LiteCoin
-                    //case "BitCoin":
-                    //case "LiteCoin":
-                    //case "DogeCoin":
-                    //var msg = await bot.SendTextMessageAsync(e.From.Id, "<i>Please Wait ...</i>", ParseMode.Html, cancellationToken: ct);
-                    //var getUrl = await _apiController.CreateCoinXoPaymentAsync(new ApiCoinXoModel() { price = value }, getUser.Token ?? "");
-                    //if (getUrl?.data is not null)
-                    //{
-                    //    var getInfo = await _apiController.InfoAsync(getUser.Token ?? "");
-                    //    var urlKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithUrl("Process Deposit", $"{getUrl.data}"), });
-                    //    await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, $"Here Is Your Payment Link :\n<b>Account ID:</b><i>{e.From.Id}</i>\n <b>Payment Method:</b> <i>{paymentMethodNameReplace}</i> \n <b>Deposit Amount :</b> <i>{value}$</i>\n <b>Current Balance:</b> <i> {getInfo?.data.balance}$ </i>", ParseMode.Html, replyMarkup: urlKeyboard, cancellationToken: ct);
-                    //}
-                    //else
-                    //    await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Right Now Our Deposit Service Is InActive!\n Please Try Again Latter", cancellationToken: ct);
-                    //break;
-                    #endregion
-
-                    #endregion
 
                     #region Perfect Money
                     case "PM":
-                        var pendingMessagePm = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
+                        var pendingMessagePm = await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Pending Request"]}", cancellationToken: ct);
                         var getAccounts = await _apiController.PerfectMoneyAccountDetailAsync(getUser.Token ?? "");
                         var selectedAccount = value == "USD" ? getAccounts?.data.usd_account ?? "-" : getAccounts?.data.eur_account ?? "-";
                         var cancelPmKeyboard = new InlineKeyboardMarkup(new[]
                         {
-                            InlineKeyboardButton.WithCallbackData("Continue", $"ConfirmSiteAccDeposit:-"),
-                            InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"),
+                            InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Continue"]}", $"ConfirmSiteAccDeposit:-"),
+                            InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}", $"Deposit:Cancel:-"),
                         });
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), ManualAccount = selectedAccount });
-                        await bot.EditMessageTextAsync(pendingMessagePm.Chat.Id, pendingMessagePm.MessageId, $"Here Is Our Perfect Money Account Number : \n ```{selectedAccount}```", ParseMode.MarkdownV2, replyMarkup: cancelPmKeyboard, cancellationToken: ct);
+                        await bot.EditMessageTextAsync(pendingMessagePm.Chat.Id, pendingMessagePm.MessageId, $"{LangDictionary[userLang]["Here Is Our Perfect Money Account Number:"]} \n ```{selectedAccount}```", ParseMode.MarkdownV2, replyMarkup: cancelPmKeyboard, cancellationToken: ct);
 
 
                         break;
@@ -450,26 +427,29 @@ public class Bot : BackgroundService
                             InlineKeyboardButton.WithCallbackData("USD",$"FinishDeposit:USD:{value}:PM"),
                             InlineKeyboardButton.WithCallbackData("EUR",$"FinishDeposit:EUR:{value}:PM"),
                         });
-                        await bot.SendTextMessageAsync(e.Message.Chat.Id, "Please Select Your Payment-Unit:", replyMarkup: unitKeyboard, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.Message.Chat.Id, $"{LangDictionary[userLang]["Please Select Your Payment-Unit:"]}", replyMarkup: unitKeyboard, cancellationToken: ct);
                         break;
                     #endregion
 
                     #region Manuals - ACTIVE
                     default:
-                        var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
+                        var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Pending Request"]}", cancellationToken: ct);
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAmount = value });
                         var gateways = await _apiController.GateWaysListAsync(getUser.Token ?? "");
                         var selected = gateways.data.FirstOrDefault(p => p.manual_gateways.name == splitData[3]);
                         if (selected is null)
-                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, "This Payment Method Is Not Available\n Please Try Again Latter", cancellationToken: ct);
+                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"{LangDictionary[userLang]["This Payment Method Is Not Available.Please Try Again Latter"]}", cancellationToken: ct);
                         else
                         {
                             var cancelKeyboard = new InlineKeyboardMarkup(new[]
                             {
-                                InlineKeyboardButton.WithCallbackData("Continue", $"ConfirmSiteAccDeposit:-"),
-                                InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"),
+                                InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Continue"]}", $"ConfirmSiteAccDeposit:-"),
+                                InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}", $"Deposit:Cancel:-"),
                             });
-                            var message = splitData[3] == "Web Money" ? $"Transfer the amount to the WebMoney account \"{selected.account}\" And Press \"<b>Continue</b>\"\n\nMinimum deposit amount 10$" : $"Enter The{selected.manual_gateways.name} Account Number:\n{selected.account}";
+                            var message =
+                                splitData[3] == "Web Money" ?
+                                $"{LangDictionary[userLang]["Transfer the amount to the WebMoney account"]} \"{selected.account}\" {LangDictionary[userLang]["And Press Continue"]}\n{LangDictionary[userLang]["Minimum deposit amount 10$"]}"
+                                : $"{LangDictionary[userLang]["Enter The"]} {selected.manual_gateways.name} {LangDictionary[userLang]["Account Number:"]}\n{selected.account}";
                             await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, message, ParseMode.Html, replyMarkup: cancelKeyboard, cancellationToken: ct);
                             await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), ManualAccount = selected.account });
                         }
@@ -489,7 +469,7 @@ public class Bot : BackgroundService
                     switch (splitData[1])
                     {
                         case "End":
-                            var msg = await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "<b>Pending Request ...</b>", ParseMode.Html, cancellationToken: ct);
+                            var msg = await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"{LangDictionary[userLang]["Pending Request"]}", cancellationToken: ct);
 
                             if (getUser.ManualAccount!.StartsWith("U") || getUser.ManualAccount.StartsWith("E"))
                             {
@@ -503,13 +483,12 @@ public class Bot : BackgroundService
                                 }, getUser.Token ?? "");
                                 if (encrypt.status is 200 or 201)
                                 {
-                                    //await bot.SendTextMessageAsync(1127927726, $"{Dependencies.PerfectMoneyApiUrl}?key={createPayment.data.payment_id}");
                                     var urlKeyboard = new InlineKeyboardMarkup(new[]
-                                    { InlineKeyboardButton.WithUrl("Process Payment", $"{Dependencies.PerfectMoneyApiUrl}?key={createPayment.data.payment_id}"), });
-                                    await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Your Payment Has Been Created\n Continue With Link:", replyMarkup: urlKeyboard, cancellationToken: ct);
+                                    { InlineKeyboardButton.WithUrl($"{LangDictionary[userLang]["Process Payment"]}", $"{PerfectMoneyApiUrl}?key={createPayment.data.payment_id}"), });
+                                    await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, $"{LangDictionary[userLang]["Your Payment Has Been Created.Continue With Link:"]}", replyMarkup: urlKeyboard, cancellationToken: ct);
                                 }
                                 else
-                                    await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "Sorry Right Now Our Service Is Not Available ", cancellationToken: ct);
+                                    await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, $"{LangDictionary[userLang]["Sorry Right Now Our Service Is Not Available"]}", cancellationToken: ct);
                             }
                             else
                             {
@@ -517,11 +496,11 @@ public class Bot : BackgroundService
                                 { amount = getUser.DepositAmount ?? "", account = getUser.DepositAccount ?? "", transaction_id = splitData[2], manual_account = getUser.ManualAccount ?? "" }, getUser.Token ?? "");
                                 if (paymentStatus?.status is 200 or 201)
                                 {
-                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"Your Request\\`s Results Are Back :\n``` {paymentStatus.data.ExtractPaymentId() ?? "Nothing Found"} ```", ParseMode.MarkdownV2, cancellationToken: ct);
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"{LangDictionary[userLang]["Your Request`s Result:"]}\n{paymentStatus.data.ExtractPaymentId() ?? "Nothing Found"}", cancellationToken: ct);
                                 }
 
                                 else
-                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>We Got Some Problems:\n{paymentStatus?.data}</i>", ParseMode.Html, cancellationToken: ct);
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"{LangDictionary[userLang]["We Got Some Problems:"]}\n{paymentStatus?.data}", cancellationToken: ct);
 
                             }
 
@@ -531,8 +510,8 @@ public class Bot : BackgroundService
                 }
                 else
                 {
-                    var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"), });
-                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Enter the Account Number:\nExample: Z10101010101", replyMarkup: cancelKeyboard, cancellationToken: ct);
+                    var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}", $"Deposit:Cancel:-"), });
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"{LangDictionary[userLang]["Enter the Account Number:"]}\n{LangDictionary[userLang]["Example:"]} Z10101010101", replyMarkup: cancelKeyboard, cancellationToken: ct);
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 2 });
                 }
 
@@ -556,11 +535,11 @@ public class Bot : BackgroundService
                         {
                             var continueWithdraw = new InlineKeyboardMarkup(new[]
                             {
-                                InlineKeyboardButton.WithCallbackData("Continue", $"ProcessWithdraw:{getUser.WithDrawAmount}:{getUser.WitchDrawPaymentMethod}"),
-                                InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"),
+                                InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Continue"]}", $"ProcessWithdraw:{getUser.WithDrawAmount}:{getUser.WitchDrawPaymentMethod}"),
+                                InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}","WithDraw:Cancel:-"),
                             });
                             await bot.SendTextMessageAsync(e.From.Id,
-                                $"You CheckList Is Ready:\n <b>Withdraw Amount : </b> <i>{getUser.WithDrawAmount}</i>\n<b>WithDraw Payment Method:</b><i>{getUser.WitchDrawPaymentMethod}</i>\n<b>Account Number:</b> <i>{getUser.WithDrawAccount}</i>",
+                                $"{LangDictionary[userLang]["You CheckList Is Ready:"]}\n <b>{LangDictionary[userLang]["Withdraw Amount:"]}</b> <i>{getUser.WithDrawAmount}</i>\n<b>{LangDictionary[userLang]["WithDraw Payment Method:"]}</b><i>{getUser.WitchDrawPaymentMethod}</i>\n<b>{LangDictionary[userLang]["Account Number:"]}</b> <i>{getUser.WithDrawAccount}</i>",
                                 ParseMode.Html, cancellationToken: ct, replyMarkup: continueWithdraw);
                             break;
                         }
@@ -579,8 +558,7 @@ public class Bot : BackgroundService
                     case "CustomNumber":
                         await _dbController.UpdateUserAsync(new User()
                         { UserId = e.From.Id.ToString(), WithDrawStep = 2 });
-                        await bot.SendTextMessageAsync(e.From.Id, "<b>Please Enter Your Custom Amount:\n (Take Notice Your Amount Must Be More Than 10$,And Your Message Cannot Contains Any Other Thing\n <i> (E.x : 12.43$ or 43.4 )) </i></b>",
-                            ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Please Enter Your Custom Amount:"]}\n{LangDictionary[userLang]["Take Notice Your Amount Must Be More Than 10$,And Your Message Cannot Contains Any Other Thing"]}\n{LangDictionary[userLang]["Example: 12.43$ or 43.4"]}", cancellationToken: ct);
                         break;
 
                     #endregion
@@ -588,10 +566,8 @@ public class Bot : BackgroundService
                     #region Cancel
 
                     case "Cancel":
-                        await _dbController.UpdateUserAsync(new User()
-                        { UserId = e.From.Id.ToString(), WithDrawStep = 0 });
-                        await bot.SendTextMessageAsync(e.From.Id, "<b>Transaction Has Been Canceled</b>",
-                            ParseMode.Html, cancellationToken: ct);
+                        await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawStep = 0 });
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>{LangDictionary[userLang]["Transaction Has Been Canceled"]}</b>", ParseMode.Html, cancellationToken: ct);
                         break;
                         #endregion
                 }
@@ -615,15 +591,13 @@ public class Bot : BackgroundService
                             InlineKeyboardButton.WithCallbackData("USD",$"FinishWithDraw:{splitData[2]}:{value}:PerfectMoneyUSD"),
                             InlineKeyboardButton.WithCallbackData("EUR",$"FinishWithDraw:{splitData[2]}:{value}:PerfectMoneyEUR"),
                         });
-                        await bot.SendTextMessageAsync(e.From.Id, "Please Select One Amount-Unit To Process Your Order :",
-                            cancellationToken: ct, replyMarkup: unitKeyboard);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Please Select One Amount-Unit To Process Your Order:"]}", cancellationToken: ct, replyMarkup: unitKeyboard);
                         break;
                     #endregion
 
                     #region PerfectMoney
                     case "PerfectMoneyUSD" or "PerfectMoneyEUR":
-                        await bot.SendTextMessageAsync(e.From.Id,
-                            "Now Please Send Your Account Number:\n (Your Account Number Is Depend On Your Previous Selection)",
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Now Please Send Your Account Number:"]}\n{LangDictionary[userLang]["Your Account Number Is Depend On Your Previous Selection"]}",
                             cancellationToken: ct);
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawAmount = value, WithDrawStep = 4, WitchDrawPaymentMethod = paymentMethod });
                         break;
@@ -658,7 +632,7 @@ public class Bot : BackgroundService
 
 
                 await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                    $"Your Withdraw Request Results Are Here : \n<b>{results.HandleApiResponse()}.</b>", ParseMode.Html, cancellationToken: ct);
+                    $"{LangDictionary[userLang]["Your Request`s Result:"]} \n<b>{results.HandleApiResponse()}.</b>", ParseMode.Html, cancellationToken: ct);
             }
             #endregion
 
@@ -681,7 +655,7 @@ public class Bot : BackgroundService
             #region Setting
 
             if (e.Data.StartsWith("Setting"))
-                await SettingAreaAsync(bot, e, ct);
+                await SettingAreaAsync(bot, e, ct, getUser);
 
 
             #endregion
@@ -705,7 +679,6 @@ public class Bot : BackgroundService
     }
     public async Task HandleMessageAsync(ITelegramBotClient bot, Message e, CancellationToken ct)
     {
-        Console.WriteLine($"Message: '{e.Chat.Id}' from :[{e.Text}].");
 
         try
         {
@@ -732,6 +705,9 @@ public class Bot : BackgroundService
                 return;
             }
 
+            var canParse = Enum.TryParse(getUser.Language!, true, out Languages userLang);
+            if (!canParse) userLang = Languages.English;
+
             #region Registeration Area
 
             switch (getUser.LoginStep)
@@ -744,14 +720,15 @@ public class Bot : BackgroundService
                         {
                             var getPassKeyboard = new InlineKeyboardMarkup(new[]
                             {
-                                InlineKeyboardButton.WithCallbackData("Forget Password","Identity:Register:ForgetPass"),
-                                InlineKeyboardButton.WithCallbackData("Back","Identity:Register:CancelCleanStep"),
+                                InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Forget Password"]}","Identity:Register:ForgetPass"),
+                                InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Back"]}","Identity:Register:CancelCleanStep"),
                             });
-                            await bot.SendTextMessageAsync(e.Chat.Id, $"Dear {e.Text}\nPlease enter the Password:", replyMarkup: getPassKeyboard, cancellationToken: ct);
+                            await bot.SendTextMessageAsync(e.Chat.Id,
+                                $"{LangDictionary[userLang]["Dear"]} {e.Text}\n{LangDictionary[userLang]["Please enter the Password:"]}", replyMarkup: getPassKeyboard, cancellationToken: ct);
                             await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 2, UserPass = $"{e.Text}" });
                         }
                         else
-                            await bot.SendTextMessageAsync(e.From.Id, $"Your User Name Cannot Contains(:)!", cancellationToken: ct);
+                            await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Your User Name Cannot Contains(:)!"]}", cancellationToken: ct);
                         break;
                     }
 
@@ -770,13 +747,13 @@ public class Bot : BackgroundService
                                     if (loginResponse?.status is 200 or 201)
                                     {
                                         await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 3, Token = loginResponse.data.token });
-                                        await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html, replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
+                                        await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["You Are In Main Menu:"]}", replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
                                     }
                                     else
                                     {
                                         await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
                                         await bot.SendTextMessageAsync(e.Chat.Id,
-                                            "<b>Wrong User Or Password,Please Try Again :</b> ", ParseMode.Html,
+                                            $"{LangDictionary[userLang]["Wrong User Or Password,Please Try Again:"]}",
                                             replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
                                     }
                                     break;
@@ -786,14 +763,14 @@ public class Bot : BackgroundService
                             #region Need 2 Factor
                             case 201 or 200:
                                 await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 7, UserPass = $"{getUser.UserPass}:{e.Text}" });
-                                await bot.SendTextMessageAsync(e.From.Id, "Your Account Has </i>Two Step Verification</i>\n We Send A <b>Code</b> To Your Email\n <b>Please Enter It Here:</b>", ParseMode.Html, cancellationToken: ct);
+                                await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Your Account Has Two Step Verification. We Send A Code To Your Email.Please Enter It Here:"]}", cancellationToken: ct);
                                 break;
                             #endregion
 
                             #region Suspend-405
                             case 405:
                                 await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
-                                await bot.SendTextMessageAsync(e.From.Id, "Your Account Has Been Suspend!", cancellationToken: ct);
+                                await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Your Account Has Been Suspend!"]}", cancellationToken: ct);
                                 break;
                             #endregion
 
@@ -801,7 +778,7 @@ public class Bot : BackgroundService
 
                             default:
                                 await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
-                                var textOutPut = checkTwoFactor?.status == 422 ? "Wrong User Or Password" : "Sorry We Got Some Problems\n PLease Come Back Latter!";
+                                var textOutPut = checkTwoFactor?.status == 422 ? $"{LangDictionary[userLang]["Wrong User Or Password"]}" : $"{LangDictionary[userLang]["Sorry We Got Some Problems.PLease Come Back Latter!"]}";
                                 await bot.SendTextMessageAsync(e.From.Id, $"<b>{textOutPut}</b>", ParseMode.Html, cancellationToken: ct);
                                 break;
 
@@ -810,13 +787,13 @@ public class Bot : BackgroundService
                         }
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"Your Password Cannot Contains (:)!", cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Your Password Cannot Contains (:)!"]}", cancellationToken: ct);
                     break;
 
                 #region TwoStepVerify
                 case 7:
                     var splitUserPass = getUser.UserPass?.Split(':');
-                    var loginPendingMessage = await bot.SendTextMessageAsync(e.Chat.Id, "<b>Pending Request...</b> ", ParseMode.Html, cancellationToken: ct);
+                    var loginPendingMessage = await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["Pending Request"]}", cancellationToken: ct);
                     var loginWithTwoStep = await _apiController.LoginAsync(new ApiLoginModel()
                     {
                         username = splitUserPass?[0] ?? "",
@@ -827,12 +804,12 @@ public class Bot : BackgroundService
                     if (!string.IsNullOrEmpty(token))
                     {
                         await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 3 });
-                        await bot.SendTextMessageAsync(e.Chat.Id, "<b>You Are In Main Menu :</b> ", ParseMode.Html, replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["You Are In Main Menu:"]}", replyMarkup: MainMenuKeyboardMarkup, cancellationToken: ct);
                     }
                     else
                     {
                         await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
-                        await bot.EditMessageTextAsync(loginPendingMessage.Chat.Id, loginPendingMessage.MessageId, $"<b>Your Login Results:\n{handleResponse}</b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.EditMessageTextAsync(loginPendingMessage.Chat.Id, loginPendingMessage.MessageId, $"{LangDictionary[userLang]["Your Login Results:"]}\n{handleResponse}", cancellationToken: ct);
                     }
                     break;
                 #endregion
@@ -856,13 +833,13 @@ public class Bot : BackgroundService
                     {
                         var setPassKeyboard = new InlineKeyboardMarkup(new[]
                         {
-                            InlineKeyboardButton.WithCallbackData("Back","Identity:Register:CancelCleanStep"),
+                            InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Back"]}","Identity:Register:CancelCleanStep"),
                         });
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 5, UserPass = $"{e.Text}" });
-                        await bot.SendTextMessageAsync(e.From.Id, $"Please enter a strong Password:", replyMarkup: setPassKeyboard, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Please enter a strong Password:"]}", replyMarkup: setPassKeyboard, cancellationToken: ct);
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"Your Email Cannot Contains(:)!", cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Your Email Cannot Contains(:)!"]}", cancellationToken: ct);
 
                     break;
 
@@ -875,7 +852,7 @@ public class Bot : BackgroundService
                     {
                         var continueRegister = new InlineKeyboardMarkup(new[]
                         {
-                            InlineKeyboardButton.WithCallbackData("Continue", "Identity:Register:ContinueWithOutLink"),
+                            InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Continue"]}", "Identity:Register:ContinueWithOutLink"),
                         });
                         await _dbController.UpdateUserAsync(new User()
                         {
@@ -883,10 +860,10 @@ public class Bot : BackgroundService
                             LoginStep = 6,
                             UserPass = $"{getUser.UserPass}:{e.Text}"
                         });
-                        await bot.SendTextMessageAsync(e.From.Id, $"Please enter the <b>referral code</b> or press \"Continue\"", ParseMode.Html, replyMarkup: continueRegister, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Please enter the referral code or press Continue"]}", replyMarkup: continueRegister, cancellationToken: ct);
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Your Password Cannot Contains (:)!"]}", cancellationToken: ct);
 
                     break;
 
@@ -908,12 +885,11 @@ public class Bot : BackgroundService
                         {
                             var emailPass = getUser.UserPass.Split(':');
                             var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { link = e.Text, has_invitation = "1", email = emailPass[0], password = emailPass[1] }, false);
-                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"Your Request`s Result:\n{response.HandleResponse()}", cancellationToken: ct);
+                            await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"{LangDictionary[userLang]["Your Request`s Result:"]}\n{response.HandleResponse()}", cancellationToken: ct);
                         }
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Password Cannot Contains <i>(:)</i>.! </b>",
-                            ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Your Password Cannot Contains (:)!"]}", cancellationToken: ct);
 
                     break;
 
@@ -926,29 +902,29 @@ public class Bot : BackgroundService
                 case 8:
                     //got email here - request for userName
                     if (e.Text.Length > 25)
-                        await bot.SendTextMessageAsync(e.From.Id, "Sorry But Your Email Is Too Long ...", cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Sorry But Your Email Is Too Long"]}", cancellationToken: ct);
                     else
                     {
-                        var pendingUpdate = await bot.SendTextMessageAsync(e.From.Id, "Pending Request", cancellationToken: ct);
+                        var pendingUpdate = await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Pending Request"]}", cancellationToken: ct);
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 9 });
                         await _restoreController.NewForgetPasswordAsync(new RestoreData() { UserId = e.From.Id.ToString(), Email = e.Text ?? "-" });
-                        await bot.EditMessageTextAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, "Please Enter Your UserName Now: ", cancellationToken: ct);
+                        await bot.EditMessageTextAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, $"{LangDictionary[userLang]["Please Enter Your UserName Now:"]}", cancellationToken: ct);
                     }
                     break;
 
                 case 9:
                     //Got UserName- Send Request To Api
                     if (e.Text.Length > 25)
-                        await bot.SendTextMessageAsync(e.From.Id, "Sorry But Your UserName Is Too Long ...", cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Sorry But Your UserName Is Too Long"]}", cancellationToken: ct);
                     else
                     {
                         var requestInfo = await _restoreController.GetRequestAsync(e.From.Id);
-                        var pendingUpdate = await bot.SendTextMessageAsync(e.From.Id, "Pending Request", cancellationToken: ct);
+                        var pendingUpdate = await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Pending Request"]}", cancellationToken: ct);
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
                         await _restoreController.UpdateForgetPassRequestAsync(new RestoreData() { UserId = e.From.Id.ToString(), UserName = e.Text ?? "-" });
                         var forgetPassRequest = await _apiController.ForgetPasswordAsync(new ApiForgetPasswordModel() { email = requestInfo.Email, username = e.Text });
                         await _restoreController.DeleteRequestAsync(new RestoreData() { UserId = e.From.Id.ToString() });
-                        await bot.EditMessageTextAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, $"Results Are Back: {forgetPassRequest?.data.result ?? "-"}", cancellationToken: ct);
+                        await bot.EditMessageTextAsync(pendingUpdate.Chat.Id, pendingUpdate.MessageId, $"{LangDictionary[userLang]["Your Request`s Result:"]} {forgetPassRequest?.data.result ?? "-"}", cancellationToken: ct);
                     }
                     break;
                 #endregion
@@ -958,7 +934,7 @@ public class Bot : BackgroundService
                 case 10:
                     //got email - send req to api 
                     var resetUsernameRequest = await _apiController.ForgetUsernameAsync(new ApiForgetUsernameModel() { email = e.Text ?? "-" });
-                    await bot.SendTextMessageAsync(e.From.Id, $"Results Are Back: \n{resetUsernameRequest.HandleApiResponse()}", cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Your Request`s Result:"]} \n{resetUsernameRequest.HandleApiResponse()}", cancellationToken: ct);
                     await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 0 });
                     break;
 
@@ -974,7 +950,7 @@ public class Bot : BackgroundService
                 #region Start
 
                 case "/start":
-                    var keyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList));
+                    var keyBoardMarkup = new InlineKeyboardMarkup(CreateInlineButton(LanguagesList));
                     await bot.SendTextMessageAsync(e.Chat.Id, "Please select a language:", replyMarkup: keyBoardMarkup, cancellationToken: ct);
                     break;
 
@@ -1005,9 +981,9 @@ public class Bot : BackgroundService
                 #region ReStoring Data-NextUpdate
 
                 case "Forget User Name":
-                    var resetUserNameKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Identity:Register:CancelCleanStep"), });
+                    var resetUserNameKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}", "Identity:Register:CancelCleanStep"), });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), LoginStep = 10 });
-                    await bot.SendTextMessageAsync(e.From.Id, "Enter Your Email Address:", replyMarkup: resetUserNameKeyboard, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Enter Your Email Address:"]}", replyMarkup: resetUserNameKeyboard, cancellationToken: ct);
                     break;
 
                     #endregion
@@ -1185,15 +1161,7 @@ public class Bot : BackgroundService
 
             #endregion
 
-            #region Local-Funcations
 
-
-
-            #endregion
-        }
-        catch (TaskCanceledException taskCanceled)
-        {
-            Console.WriteLine($"SomeTask Canceled Here : \n[{taskCanceled.Task?.Exception}]\n[{taskCanceled.Message}]\n");
         }
         catch (Exception exception)
         {
@@ -1651,7 +1619,7 @@ public class Bot : BackgroundService
                                     else
                                     {
 
-                                        var countryListMarkup = new InlineKeyboardMarkup(CreateInlineButtonCountryList(Dependencies.LanguagesList));
+                                        var countryListMarkup = new InlineKeyboardMarkup(CreateInlineButtonCountryList(LanguagesList));
                                         await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
                                             "Select A Country To Continue:", replyMarkup: countryListMarkup,
                                             cancellationToken: ct);
@@ -1700,7 +1668,7 @@ public class Bot : BackgroundService
                                 else
                                 {
 
-                                    var countryListKeyboard = CreateInlineButtonCountryListQuestionSelect(Dependencies.LanguagesList);
+                                    var countryListKeyboard = CreateInlineButtonCountryListQuestionSelect(LanguagesList);
                                     countryListKeyboard.Add(new List<InlineKeyboardButton>()
                                         {
                                             InlineKeyboardButton.WithCallbackData("Back","Admin:QuestionCommands:Back:QuestionCommands")
@@ -1747,7 +1715,7 @@ public class Bot : BackgroundService
                                         case "QuestionCommandsCleanLang":
                                             await _adminController.UpdateAdminAsync(new Admin()
                                             { UserId = e.From.Id.ToString(), CurrentQuestionLanguage = null });
-                                            var countryListMarkup = new InlineKeyboardMarkup(CreateInlineButtonCountryList(Dependencies.LanguagesList));
+                                            var countryListMarkup = new InlineKeyboardMarkup(CreateInlineButtonCountryList(LanguagesList));
                                             await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
                                                 "Select A Country To Continue:", replyMarkup: countryListMarkup,
                                                 cancellationToken: ct);
@@ -1792,16 +1760,18 @@ public class Bot : BackgroundService
         try
         {
             if (e.From is null || e.Text is null) return;
+            var canParse = Enum.TryParse(user.Language!, true, out Languages userLang);
+            if (!canParse) userLang = Languages.English;
 
             if (e.Text.StartsWith("/start") && e.Text.Split(' ').Length >= 2)
             {
                 // /start payment_confirmPayment
                 var splitData = e.Text.Split('_');
                 var paymentId = splitData[1];
-                var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
+                var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Pending Request"]}", ParseMode.Html, cancellationToken: ct);
                 var results = await _apiController.CheckPaymentAsync(new ApiManualCheckPaymentModel() { payment_id = paymentId }, user.Token ?? "");
                 var verified = results.data.verified ? "Yes" : "No";
-                await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"Results Are Here :\n<b>Verified:{verified}\nOrder Id: {results.data.order_id}\n Amount:{results.data.amount}\nPayment ID:{results.data.payment_id}</b>",
+                await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"{LangDictionary[userLang]["Your Request`s Result:"]} \n<b>Verified:{verified}\nOrder Id: {results.data.order_id}\n Amount:{results.data.amount}\nPayment ID:{results.data.payment_id}</b>",
                     ParseMode.Html, cancellationToken: ct);
             }
 
@@ -1811,14 +1781,10 @@ public class Bot : BackgroundService
                 #region CheckList-GetAccountNumber
                 case 1:
                     await _dbController.UpdateUserAsync(new User() { UserId = e.Chat.Id.ToString(), WithDrawAccount = e.Text });
-                    var continueWithdraw = new InlineKeyboardMarkup(new[]
-                    {
-                    InlineKeyboardButton.WithCallbackData("Continue", $"ProcessWithdraw:{user.WithDrawAmount}:{user.WitchDrawPaymentMethod}"),
-                    InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"),
-                });
+                    var continueWithdraw = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Continue"]}", $"ProcessWithdraw:{user.WithDrawAmount}:{user.WitchDrawPaymentMethod}"), InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}", "WithDraw:Cancel:-"), });
+
                     await bot.SendTextMessageAsync(e.Chat.Id,
-                        $"You CheckList Is Ready:\n <b>Withdraw Amount : </b> <i>{user.WithDrawAmount}</i>\n<b>WithDraw Payment Method:</b><i>{user.WitchDrawPaymentMethod}</i>\n<b>Account Number:</b> <i>{e.Text}</i>",
-                        ParseMode.Html, cancellationToken: ct, replyMarkup: continueWithdraw);
+                        $"{LangDictionary[userLang]["You CheckList Is Ready:"]}\n <b>{LangDictionary[userLang]["Withdraw Amount:"]}</b> <i>{user.WithDrawAmount}</i>\n<b>{LangDictionary[userLang]["WithDraw Payment Method:"]}</b><i>{user.WitchDrawPaymentMethod}</i>\n<b>{LangDictionary[userLang]["Account Number:"]}</b> <i>{e.Text}</i>", ParseMode.Html, cancellationToken: ct, replyMarkup: continueWithdraw);
                     break;
                 #endregion
 
@@ -1826,7 +1792,7 @@ public class Bot : BackgroundService
                 case 2:
                     if (e.Text.Length > 20)
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, $"This Amount Is Too Long!\n Maximum Length Is 17", cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["This Amount Is Too Long!Maximum Length Is 17"]}", cancellationToken: ct);
                         return;
                     }
                     var isValid = e.Text.TryParseAmount(out var parsedAmount);
@@ -1860,7 +1826,7 @@ public class Bot : BackgroundService
                                 InlineKeyboardButton.WithCallbackData("DAI Erc20",$"FinishWithDraw:{parsedAmount}:{chatId}:DAI Erc20")
                                 }, new [] { InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"), } });
 
-                        await bot.SendTextMessageAsync(e.From.Id, " Select Payment Method :", replyMarkup: paymentKeyboardMarkup, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Select Payment Method:"]}", replyMarkup: paymentKeyboardMarkup, cancellationToken: ct);
 
                         //var continueCustomWithdrawKeyboard = new InlineKeyboardMarkup(new[]
                         //{
@@ -1871,7 +1837,7 @@ public class Bot : BackgroundService
                     }
                     else
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, "Minimum amount to deposit 10$ ", cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Minimum amount to deposit 10$"]}", cancellationToken: ct);
                     }
                     break;
 
@@ -1880,11 +1846,11 @@ public class Bot : BackgroundService
                 #region AccountNumber Based On USD OR EUR
 
                 case 4:
-                    await bot.SendTextMessageAsync(e.From.Id, "<b>Please Wait Until We Check Your Account Number...</b> ",
+                    await bot.SendTextMessageAsync(e.From.Id, $"<b>{LangDictionary[userLang]["Please Wait Until We Check Your Account Number..."]}</b>",
                         ParseMode.Html, cancellationToken: ct);
                     if (CheckAccountNumber(user.WitchDrawPaymentMethod ?? "", e.Text ?? "", out var unit))
                     {
-                        var msg = await bot.SendTextMessageAsync(e.From.Id, "<b>Your Account Number Has Been Verified</b> ",
+                        var msg = await bot.SendTextMessageAsync(e.From.Id, $"<b>{LangDictionary[userLang]["Your Account Number Has Been Verified"]}</b> ",
                             ParseMode.Html, cancellationToken: ct);
                         await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), WithDrawAccount = e.Text ?? "", WithDrawStep = 0 });
                         await _apiController.WithdrawAsync(new ApiWithdrawModel()
@@ -1895,12 +1861,11 @@ public class Bot : BackgroundService
                             units = unit
 
                         }, user.Token ?? "");
-                        await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, "<b>Your Request Submitted SuccessFully!</b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.EditMessageTextAsync(msg.Chat.Id, msg.MessageId, $"<b>{LangDictionary[userLang]["Your Request Submitted SuccessFully!"]}</b>", ParseMode.Html, cancellationToken: ct);
                     }
                     else
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, "<b>Your Account Number Is Wrong</b> ",
-                            ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b{LangDictionary[userLang]["Your Account Number Is Wrong"]}></b> ", ParseMode.Html, cancellationToken: ct);
                     }
                     break;
 
@@ -1916,7 +1881,7 @@ public class Bot : BackgroundService
                 case 1:
                     if (e.Text?.Length > 20)
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, "This Amount Is Too Long!\nMaximum Length Is 17", cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["This Amount Is Too Long!Maximum Length Is 17"]}", cancellationToken: ct);
                         return;
                     }
                     var isValid = e.Text.TryParseAmount(out var parsedAmount);
@@ -1926,15 +1891,14 @@ public class Bot : BackgroundService
 
                         var continueCustomWithdrawKeyboard = new InlineKeyboardMarkup(new[]
                         {
-                        InlineKeyboardButton.WithCallbackData("Continue",$"Deposit:{parsedAmount}:{e.From.Id}"),
-                        InlineKeyboardButton.WithCallbackData("Cancel","Deposit:Cancel:-"),
+                        InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Continue"]}",$"Deposit:{parsedAmount}:{e.From.Id}"),
+                        InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}","Deposit:Cancel:-"),
                     });
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Entered Amount Is [{parsedAmount}$]</b>\n If Its Correct Please Press Continue", ParseMode.Html, replyMarkup: continueCustomWithdrawKeyboard, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>{LangDictionary[userLang]["Your Entered Amount Is"]} [{parsedAmount}$]</b>\n{LangDictionary[userLang]["If Its Correct Please Press Continue"]}", ParseMode.Html, replyMarkup: continueCustomWithdrawKeyboard, cancellationToken: ct);
                     }
                     else
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, "<b>Please Enter A Valid Number.\n Amount Must Be More Than 10.0 $</b> ",
-                            ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"<b>{LangDictionary[userLang]["Please Enter A Valid Number.Amount Must Be More Than 10.0$"]}</b> ", ParseMode.Html, cancellationToken: ct);
                     }
                     break;
                 #endregion
@@ -1943,9 +1907,9 @@ public class Bot : BackgroundService
 
                 #region GotAccount-Getting Transaction ID
                 case 2:
-                    var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"), });
+                    var cancelKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}", $"Deposit:Cancel:-"), });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositAccount = e.Text, DepositStep = 3 });
-                    await bot.SendTextMessageAsync(e.From.Id, $"Please enter the <b>Transaction ID:</b>", ParseMode.Html, replyMarkup: cancelKeyboard, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Please enter the Transaction ID:"]}", replyMarkup: cancelKeyboard, cancellationToken: ct);
                     break;
                 #endregion
 
@@ -1953,13 +1917,13 @@ public class Bot : BackgroundService
                 case 3:
                     if (e.Text?.Length > 70)
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, $"```This Transaction Id Is Too Long!\n Maximum Length Is 70```", ParseMode.MarkdownV2, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["This Transaction Id Is Too Long! Maximum Length Is 70"]}", cancellationToken: ct);
                         return;
                     }
                     var cancelDepositKeyboard = new InlineKeyboardMarkup(new[]
                     {
-                        InlineKeyboardButton.WithCallbackData("Continue", $"ConfirmSiteAccDeposit:End:{e.Text??"-"}"),
-                        InlineKeyboardButton.WithCallbackData("Cancel", $"Deposit:Cancel:-"),
+                        InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Continue"]}", $"ConfirmSiteAccDeposit:End:{e.Text??"-"}"),
+                        InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}", $"Deposit:Cancel:-"),
                     });
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), DepositStep = 0 });
                     await bot.SendTextMessageAsync(e.From.Id,
@@ -1984,11 +1948,11 @@ public class Bot : BackgroundService
                 if (getQuestion is not null)
                 {
                     await bot.SendTextMessageAsync(e.From.Id,
-                        $"Your Question : {getQuestion.Question1}\n Here Is Your Answer:\n<i>{getQuestion.Answer}</i>", ParseMode.Html,
+                        $"{LangDictionary[userLang]["Your Question:"]} {getQuestion.Question1}\n {LangDictionary[userLang]["Here Is Your Answer:"]}\n<i>{getQuestion.Answer}</i>", ParseMode.Html,
                         cancellationToken: ct);
                 }
                 else
-                    await bot.SendTextMessageAsync(e.From.Id, "There Is No Answer Submitted For This Question!",
+                    await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["There Is No Answer Submitted For This Question!"]}",
                         cancellationToken: ct, replyMarkup: BackToMainMenuKeyboardMarkup);
             }
 
@@ -2001,11 +1965,10 @@ public class Bot : BackgroundService
                 #region Tracking Payment
                 case 1:
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), PublicSteps = 0 });
-                    var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, "<b>Pending Request...</b>", ParseMode.Html, cancellationToken: ct);
+                    var pendingMessage = await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Pending Request"]}", cancellationToken: ct);
                     var results = await _apiController.CheckPaymentAsync(new ApiManualCheckPaymentModel() { payment_id = e.Text ?? "" }, user.Token ?? "");
                     var verified = results.data.verified ? "Yes" : "No";
-                    await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"<i>Your Tracking Results Are Back:</i><b>\nVerified:{verified}\nOrder Id: {results.data.order_id}\n Amount:{results.data.amount}\nPayment ID:{results.data.payment_id}</b>", ParseMode.Html, cancellationToken: ct);
-
+                    await bot.EditMessageTextAsync(pendingMessage.Chat.Id, pendingMessage.MessageId, $"Verified:{verified}\nOrder Id: {results.data.order_id}\n Amount:{results.data.amount}\nPayment ID:{results.data.payment_id}", cancellationToken: ct);
                     break;
                     #endregion
             }
@@ -2020,10 +1983,10 @@ public class Bot : BackgroundService
                     if (questions.Count > 0)
                     {
                         CreateKeyboardButtonQuestions(questions.QuestionNames(), out var replyKeyboardMarkup);
-                        await bot.SendTextMessageAsync(e.From.Id, "Here Is Popular Questions:", replyMarkup: replyKeyboardMarkup, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Here Is Popular Questions:"]}", replyMarkup: replyKeyboardMarkup, cancellationToken: ct);
                     }
                     else
-                        await bot.SendTextMessageAsync(e.From.Id, "No Question Found For Your Language!",
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["No Question Found For Your Language!"]}",
                             cancellationToken: ct);
 
 
@@ -2033,7 +1996,7 @@ public class Bot : BackgroundService
                 #region Back To Main Menu
 
                 case "Back To Main Menu":
-                    await bot.SendTextMessageAsync(e.From.Id, "You Are In Main : ", replyMarkup: user.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["You Are In Main Menu:"]}", replyMarkup: user.LoginStep == 3 ? MainMenuKeyboardMarkup : IdentityKeyboardMarkup, cancellationToken: ct);
                     break;
 
                 #endregion
@@ -2041,7 +2004,7 @@ public class Bot : BackgroundService
                 #region Settings
 
                 case "Settings":
-                    await bot.SendTextMessageAsync(e.From.Id, "Your Settings:", replyMarkup: SettingsKeyboardMarkup, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Your Settings:"]}", replyMarkup: SettingsKeyboardMarkup, cancellationToken: ct);
                     break;
 
                 #endregion
@@ -2051,7 +2014,7 @@ public class Bot : BackgroundService
                     var getDetails = await _apiController.PremiumDetailsAsync();
                     if (getDetails is null)
                     {
-                        await bot.SendTextMessageAsync(e.Chat.Id, "This Service Is Not Available Right Now!", ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["This Service Is Not Available Right Now!"]}", cancellationToken: ct);
                         return;
                     }
                     getDetails.ProcessSubscriptionDetails(out var downloadLimit,
@@ -2071,7 +2034,7 @@ public class Bot : BackgroundService
 
                 #region Support
                 case "Support":
-                    var subMenuMessage = await bot.SendTextMessageAsync(e.Chat.Id, "<b> Support Sub-Menu :</b> ", ParseMode.Html, cancellationToken: ct);
+                    var subMenuMessage = await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["Support Menu:"]}", cancellationToken: ct);
                     var supportKeyBoardMarkup = new InlineKeyboardMarkup(new[] { new[] {
                     InlineKeyboardButton.WithCallbackData("Ticket", "Support:Ticket"),
                     InlineKeyboardButton.WithCallbackData("Donate", "Support:Donate"),
@@ -2097,7 +2060,7 @@ public class Bot : BackgroundService
                         InlineKeyboardButton.WithCallbackData("Enter Custom Amount",$"Deposit:Custom:{e.Chat.Id}"),
                         InlineKeyboardButton.WithCallbackData("Cancel",$"Deposit:Cancel:-"), } });
 
-                    await bot.SendTextMessageAsync(e.Chat.Id, "Select an option or press \"Enter Custom Amount\" to deposit another amount.", replyMarkup: valuesKeyboardMarkup, cancellationToken: ct);
+                    await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["Select an option or press \"Enter Custom Amount\" to deposit another amount."]}", replyMarkup: valuesKeyboardMarkup, cancellationToken: ct);
                     break;
                 #endregion
 
@@ -2129,7 +2092,7 @@ public class Bot : BackgroundService
                         }
 
                     });
-                        await bot.SendTextMessageAsync(e.Chat.Id, "<b>Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue :</b> \n (You Can Use The Last Option To Continue With Your Previous Method And Amount To Withdraw) ", ParseMode.Html, replyMarkup: amountKeyboardMarkup, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue:"]}\n{LangDictionary[userLang]["(You Can Use The Last Option To Continue With Your Previous Method And Amount To Withdraw)"]}", replyMarkup: amountKeyboardMarkup, cancellationToken: ct);
                     }
                     else
                     {
@@ -2149,7 +2112,7 @@ public class Bot : BackgroundService
                             InlineKeyboardButton.WithCallbackData("Cancel","WithDraw:Cancel:-"),
                         }
                      });
-                        await bot.SendTextMessageAsync(e.Chat.Id, "<b>Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue :</b> ", ParseMode.Html, replyMarkup: amountKeyboardMarkup, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["Select Value Or Enter Your Own Custom Value By Selecting (Custom Amount) To Continue:"]}", replyMarkup: amountKeyboardMarkup, cancellationToken: ct);
                     }
                     break;
                 #endregion
@@ -2159,7 +2122,7 @@ public class Bot : BackgroundService
                 case "Wallet":
                     var getInfo = await _apiController.InfoAsync(user.Token ?? "");
                     if (getInfo is null)
-                        await bot.SendTextMessageAsync(e.Chat.Id, $"<b><i>Dear {e.Chat.Id}\n We Cant Get Your Info Right Now!\n Please Try Again Latter</i></b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["Dear"]} {e.Chat.Id}\n{LangDictionary[userLang]["We Cant Get Your Info Right Now!"]}\n{LangDictionary[userLang]["Please Try Again Latter"]}", cancellationToken: ct);
                     else
                     {
                         var data = $"Balance: {getInfo.data.balance}$ \nAccount Number:` {getInfo.data.wallet_number} `".EscapeUnSupportChars();
@@ -2189,11 +2152,11 @@ public class Bot : BackgroundService
                             InlineKeyboardButton.WithCallbackData($"{price * 4} USD",$"Ref:Ads:Check:{price * 4}"),
                             InlineKeyboardButton.WithCallbackData($"{price * 5} USD",$"Ref:Ads:Check:{price * 5}"),
                         } });
-                        await bot.SendTextMessageAsync(e.Chat.Id, "Select Your Plan To Continue: ", replyMarkup: referralAdsKeyboard, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["Select Your Plan To Continue:"]}", replyMarkup: referralAdsKeyboard, cancellationToken: ct);
                     }
                     catch (Exception)
                     {
-                        await bot.SendTextMessageAsync(e.Chat.Id, "This Service Currently Is UnAvailable\n Please Try Again Latter! ", cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["This Service Is Not Available Right Now!"]}\n{LangDictionary[userLang]["Please Try Again Latter!"]}", cancellationToken: ct);
 
                     }
 
@@ -2205,14 +2168,14 @@ public class Bot : BackgroundService
                 case "Referral Link":
                     var checkSub = await _apiController.CheckSubscriptionsAsync(user.Token ?? "");
                     if (checkSub?.message == "nothing found")
-                        await bot.SendTextMessageAsync(e.From.Id, "Please Buy A Subscription First!", cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Please Buy A Subscription First!"]}", cancellationToken: ct);
                     else
                     {
                         var getLink = await _apiController.InfoAsync(user.Token ?? "");
                         if (getLink?.data is not null)
-                            await bot.SendTextMessageAsync(e.From.Id, $"Here Is Your Referral Token: `{getLink.data.link}`", ParseMode.MarkdownV2, cancellationToken: ct);
+                            await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Here Is Your Referral Token:"]} `{getLink.data.link}`", ParseMode.MarkdownV2, cancellationToken: ct);
                         else
-                            await bot.SendTextMessageAsync(e.From.Id, $"<b>Service Is Not Available.\n Please Try Again Latter!</b>", ParseMode.Html, cancellationToken: ct);
+                            await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["This Service Is Not Available Right Now!"]}\n{LangDictionary[userLang]["Please Try Again Latter!"]}", cancellationToken: ct);
 
                     }
                     break;
@@ -2231,8 +2194,7 @@ public class Bot : BackgroundService
                     }
                     else
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, "<i>You Have No Activity In Record !</i>", ParseMode.Html,
-                            cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, "You Have No Activity In Record!", cancellationToken: ct);
                     }
                     break;
                 #endregion
@@ -2242,7 +2204,7 @@ public class Bot : BackgroundService
                     var getTransactions = await _apiController.TransactionsAsync(user.Token ?? "");
                     if (getTransactions is null || getTransactions.data.Count < 1)
                     {
-                        await bot.SendTextMessageAsync(e.From.Id, "<b>No Transaction Found!</b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["No Transaction Found!"]}", cancellationToken: ct);
                     }
                     else
                     {
@@ -2259,7 +2221,7 @@ public class Bot : BackgroundService
                             else
                                 results += $"ID:{trans.id}\nType:{trans.type} \nAmount: {trans.amount}\nDate:{trans.created_at} \n--------\n";
                         }
-                        await bot.SendTextMessageAsync(e.From.Id, $"<b>{results}</b>", ParseMode.Html, cancellationToken: ct);
+                        await bot.SendTextMessageAsync(e.From.Id, results, cancellationToken: ct);
 
                     }
                     break;
@@ -2276,19 +2238,20 @@ public class Bot : BackgroundService
 
         }
     }
-    private async Task SettingAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct)
+    private async Task SettingAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct, User user)
     {
         try
         {
             if (e.Data is null || e.Message is null) return;
-
+            var canParse = Enum.TryParse(user.Language!, true, out Languages userLang);
+            if (!canParse) userLang = Languages.English;
             var splitData = e.Data.Split(":");
             var settingType = splitData[1];
             switch (settingType)
             {
                 #region Change Language
                 case "ChangeLang":
-                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Select Your New Language Please : ", replyMarkup: new InlineKeyboardMarkup(CreateInlineButton(Dependencies.LanguagesList)), cancellationToken: ct);
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Select Your New Language Please: ", replyMarkup: new InlineKeyboardMarkup(CreateInlineButton(LanguagesList)), cancellationToken: ct);
                     break;
                 #endregion
 
@@ -2304,29 +2267,22 @@ public class Bot : BackgroundService
                                 if (logOut)
                                 {
                                     await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct);
-                                    await bot.SendTextMessageAsync(e.Message.Chat.Id, "<b>You LoggedOut From System!</b>", ParseMode.Html, replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
+                                    await bot.SendTextMessageAsync(e.Message.Chat.Id, $"<b>{LangDictionary[userLang]["You LoggedOut From System!"]}</b>", ParseMode.Html, replyMarkup: IdentityKeyboardMarkup, cancellationToken: ct);
                                 }
                                 else
                                 {
-                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                        "<b>Something Wrong Happens\n Please Try Again Latter!</b>", cancellationToken: ct);
+                                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<b>{LangDictionary[userLang]["Something Wrong Happens.Please Try Again Latter!"]}</b>", cancellationToken: ct);
                                 }
                                 break;
                             case "No":
-                                await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                    "<b>You Canceled This Operation.\n Have A Great Day!</b>", ParseMode.Html, cancellationToken: ct);
+                                await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<b>{LangDictionary[userLang]["You Canceled This Operation.Have A Great Day!"]}</b>", ParseMode.Html, cancellationToken: ct);
                                 break;
                         }
                     }
                     else
                     {
-                        var confirmLogoutKeyboard = new InlineKeyboardMarkup(new[]
-                    {
-                    InlineKeyboardButton.WithCallbackData("Yes","Setting:Logout:Yes"),
-                    InlineKeyboardButton.WithCallbackData("Cancel","Setting:Logout:No")
-                });
-                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "Are You Sure You Wanna Logout?",
-                            cancellationToken: ct, replyMarkup: confirmLogoutKeyboard);
+                        var confirmLogoutKeyboard = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Yes"]}", "Setting:Logout:Yes"), InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}", "Setting:Logout:No") });
+                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"{LangDictionary[userLang]["Are You Sure You Wanna Logout?"]}", cancellationToken: ct, replyMarkup: confirmLogoutKeyboard);
                     }
                     break;
                     #endregion
@@ -2337,8 +2293,7 @@ public class Bot : BackgroundService
             await SendExToAdminAsync(exception, bot, ct);
             Log.Error(exception, "SettingAreaAsync");
             Console.WriteLine(exception);
-            await bot.SendTextMessageAsync(e.From.Id,
-                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+            await bot.SendTextMessageAsync(e.From.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
     }
     private async Task SupportAreaAsync(ITelegramBotClient bot, CallbackQuery e, CancellationToken ct, User user)
@@ -2346,7 +2301,8 @@ public class Bot : BackgroundService
         try
         {
             if (e.Data is null || e.Message is null) return;
-
+            var canParse = Enum.TryParse(user.Language!, true, out Languages userLang);
+            if (!canParse) userLang = Languages.English;
             var splitData = e.Data.Split(":");
             var areaType = splitData[1];
             switch (areaType)
@@ -2365,11 +2321,11 @@ public class Bot : BackgroundService
                         InlineKeyboardButton.WithCallbackData("100 USD","Support:ProcessDonate:100"),
                     }, new []
                     {
-                        InlineKeyboardButton.WithCallbackData("Cancel","Support:Back"),
+                        InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}","Support:Back"),
                     } });
                     var getInfo = await _apiController.InfoAsync(user.Token ?? "");
                     await bot.SendTextMessageAsync(e.From.Id,
-                        $"Select A Value To Donate : \n (Your Current Balance Is : {getInfo?.data.balance} )", cancellationToken: ct, replyMarkup: donateKeyboardMarkup);
+                        $"{LangDictionary[userLang]["Select A Value To Donate:"]} \n{LangDictionary[userLang]["Your Current Balance Is:"]} {getInfo?.data.balance}", cancellationToken: ct, replyMarkup: donateKeyboardMarkup);
                     break;
                 #endregion
 
@@ -2384,7 +2340,7 @@ public class Bot : BackgroundService
                                 await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, $"<b>{donate.message}</b>", ParseMode.Html, cancellationToken: ct);
                                 break;
                             default:
-                                await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, "Donate Service Is InActive!\n Please Try Again Latter", cancellationToken: ct);
+                                await bot.EditMessageTextAsync(e.From.Id, e.Message.MessageId, $"{LangDictionary[userLang]["This Service Is InActive.Please Try Again Latter!"]}", cancellationToken: ct);
                                 break;
                         }
                     }
@@ -2405,25 +2361,23 @@ public class Bot : BackgroundService
                     else
                     {
                         var contactKeyboard = new InlineKeyboardMarkup(new[]
-                        { InlineKeyboardButton.WithUrl("Support", "https://t.me/MEXINAMITen"),InlineKeyboardButton.WithCallbackData("Cancel","Support:Ticket:Back")});
-                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                            "You Can Contact To Our Support From This Link :", replyMarkup: contactKeyboard, cancellationToken: ct);
+                        { InlineKeyboardButton.WithUrl($"{LangDictionary[userLang]["Support"]}", "https://t.me/MEXINAMITen"),InlineKeyboardButton.WithCallbackData("Cancel","Support:Ticket:Back")});
+                        await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"{LangDictionary[userLang]["You Can Contact To Our Support From This Link:"]}", replyMarkup: contactKeyboard, cancellationToken: ct);
                     }
                     break;
                 #endregion
 
                 #region Track
                 case "Track":
-                    var cancel = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("Cancel", "Support:Back"), });
-                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "<b>Please Send Your Payment ID:</b>", ParseMode.Html, replyMarkup: cancel, cancellationToken: ct);
+                    var cancel = new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Cancel"]}", "Support:Back"), });
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<b>{LangDictionary[userLang]["Please Send Your Payment ID:"]}</b>", ParseMode.Html, replyMarkup: cancel, cancellationToken: ct);
                     await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), PublicSteps = 1 });
                     break;
                 #endregion
 
                 #region Cancel
                 case "Back":
-                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                        "<i>Progress Has Been Canceled</i>", ParseMode.Html, cancellationToken: ct);
+                    await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>{LangDictionary[userLang]["Progress Has Been Canceled"]}</i>", ParseMode.Html, cancellationToken: ct);
                     break;
                     #endregion
 
@@ -2433,9 +2387,7 @@ public class Bot : BackgroundService
         {
             await SendExToAdminAsync(exception, bot, ct);
             Log.Error(exception, "SupportAreaAsync");
-            Console.WriteLine(exception);
-            await bot.SendTextMessageAsync(e.From.Id,
-                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+            await bot.SendTextMessageAsync(e.From.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
 
     }
@@ -2444,6 +2396,9 @@ public class Bot : BackgroundService
         try
         {
             if (e.Data is null || e.Message is null) return;
+
+            var canParse = Enum.TryParse(user.Language!, true, out Languages userLang);
+            if (!canParse) userLang = Languages.English;
 
             var splitData = e.Data.Split(":");
             var refType = splitData[1];
@@ -2459,9 +2414,9 @@ public class Bot : BackgroundService
                             await bot.DeleteMessageAsync(e.Message.Chat.Id, e.Message.MessageId, ct); var getValue = Convert.ToInt32(splitData[3]);
                             var continueAdsKeyboard = new InlineKeyboardMarkup(new[]
                             {
-                                InlineKeyboardButton.WithCallbackData("Continue",$"Ref:Ads:Finish:{getValue / 6}"),
+                                InlineKeyboardButton.WithCallbackData($"{LangDictionary[userLang]["Continue"]}",$"Ref:Ads:Finish:{getValue / 6}"),
                             });
-                            await bot.SendTextMessageAsync(e.From.Id, $"<b> Here Is Your CheckList: </b> \n<i>{getValue / 6} Premium Account {getValue} USD</i>", ParseMode.Html, cancellationToken: ct, replyMarkup: continueAdsKeyboard);
+                            await bot.SendTextMessageAsync(e.From.Id, $"<b>{LangDictionary[userLang]["Here Is Your CheckList:"]}</b>\n<i>{getValue / 6} {LangDictionary[userLang]["Premium Account"]} {getValue} USD</i>", ParseMode.Html, cancellationToken: ct, replyMarkup: continueAdsKeyboard);
                             break;
                         #endregion
 
@@ -2474,14 +2429,14 @@ public class Bot : BackgroundService
                                 var getResponse = await _apiController.BuyReferralAdsAsync(new ApiAdsModel() { persons = count }, user.Token ?? "");
                                 if (getResponse is null)
                                 {
-                                    await bot.SendTextMessageAsync(e.From.Id, $"<b>This Service Is InActive!\n Please Try Again Latter!</i>", ParseMode.Html, cancellationToken: ct);
+                                    await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["This Service Is InActive.Please Try Again Latter!"]}", cancellationToken: ct);
                                 }
                                 else
-                                    await bot.SendTextMessageAsync(e.From.Id, $"<b>Your Payment Result:</b>\n <i>{getResponse.data.result ?? getResponse.message}</i>", ParseMode.Html, cancellationToken: ct);
+                                    await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["Your Request`s Result:"]}\n{getResponse.data.result ?? getResponse.message}", cancellationToken: ct);
                             }
                             catch (Exception)
                             {
-                                await bot.SendTextMessageAsync(e.From.Id, $"<b>We Got Some Problems Here!\nPlease Try Again Latter.\nIf Problem Still Resist Please Contact Support!</b>", ParseMode.Html, cancellationToken: ct);
+                                await bot.SendTextMessageAsync(e.From.Id, $"{LangDictionary[userLang]["We Got Some Problems Here!.Please Try Again Latter.If Problem Still Resist Please Contact Support!"]}", cancellationToken: ct);
 
                             }
 
@@ -2502,9 +2457,7 @@ public class Bot : BackgroundService
         {
             await SendExToAdminAsync(exception, bot, ct);
             Log.Error(exception, "ReferralAreaAsync");
-            Console.WriteLine(exception);
-            await bot.SendTextMessageAsync(e.From.Id,
-                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+            await bot.SendTextMessageAsync(e.From.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
 
         }
     }
@@ -2513,6 +2466,10 @@ public class Bot : BackgroundService
         try
         {
             if (e.Data is null || e.Message is null) return;
+
+
+            var canParse = Enum.TryParse(user.Language!, true, out Languages userLang);
+            if (!canParse) userLang = Languages.English;
 
             var splitData = e.Data.Split(":");
             var identityTape = splitData[1];
@@ -2547,12 +2504,12 @@ public class Bot : BackgroundService
                         #region Finish Register
                         case "ContinueWithOutLink":
                             await _dbController.UpdateUserAsync(new User() { UserId = e.From.Id.ToString(), LoginStep = 0 });
-                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, "<i>Please Wait A Second While We Processing Your Request...</i>", ParseMode.Html,
+                            await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId, $"<i>{LangDictionary[userLang]["Please Wait A Second While We Processing Your Request..."]}</i>", ParseMode.Html,
                                 cancellationToken: ct);
                             var emailPass = user.UserPass.Split(':');
                             var response = await _apiController.RegisterUserAsync(new ApiRegisterModel() { has_invitation = "0", email = emailPass[0], password = emailPass[1] }, true);
                             await bot.EditMessageTextAsync(e.Message.Chat.Id, e.Message.MessageId,
-                                $"Your Request`s Result:\n<b>{response.HandleResponse()}</b>", ParseMode.Html, cancellationToken: ct);
+                                $"{LangDictionary[userLang]["Your Request`s Result:"]}\n<b>{response.HandleResponse()}</b>", ParseMode.Html, cancellationToken: ct);
                             break;
                         #endregion
 
@@ -2571,9 +2528,8 @@ public class Bot : BackgroundService
         {
             await SendExToAdminAsync(exception, bot, ct);
             Log.Error(exception, "IdentityAreaAsync");
-            Console.WriteLine(exception);
-            await bot.SendTextMessageAsync(e.From.Id,
-                "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
+            // Console.WriteLine(exception);
+            await bot.SendTextMessageAsync(e.From.Id, "We Got Some Problems \nPlease Wait Until We Fix It!\nIf Problem Still Resist Please Contact To Our Support Service!", cancellationToken: ct);
         }
     }
     private static async Task SendExToAdminAsync(Exception exception, ITelegramBotClient bot, CancellationToken ct)
@@ -2592,7 +2548,7 @@ public class Bot : BackgroundService
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        var botClient = new TelegramBotClient(Dependencies.BotInformation.Token);
+        var botClient = new TelegramBotClient(BotInformation.Token);
         // using var cts = new CancellationTokenSource();
         var receiverOptions = new ReceiverOptions
         {
