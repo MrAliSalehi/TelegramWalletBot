@@ -2205,7 +2205,7 @@ public static class Dependencies
         }
         },
     };
-    public static string ConnectionString { get; set; } = @"Data Source=.;Initial Catalog=MexinamitBot;User ID=remoteUser;Password=alisalehi!@#123";
+    public static string ConnectionString { get; set; } = @"Data Source=.;Initial Catalog=MexinamitBot;User ID=mrali109;Password=alisalehi!@#123";
     //Data Source=qwxp\SQL2019;Initial Catalog=TelbotZB_HangFire_db;User ID=bot;Password=jokerr123
     // is main
     public static List<string> StatusList => new() { "admin", "Admin", "owner", "Owner", "Member", "Administrator", "administrator", "Creator" };
