@@ -39,7 +39,8 @@ public static class Dependencies
         {
             Languages.English,
             new Dictionary<string, string>
-        {
+            {
+
             {"Cancel","Cancel"},
             {"Back", "Back" },
             {"Dear", "Dear" },
@@ -133,6 +134,7 @@ public static class Dependencies
             {"Please Buy A Subscription First!","Please Buy A Subscription First!"},
             {"Here Is Your Referral Token:","Here Is Your Referral Token:"},
             {"No Transaction Found!","No Transaction Found!"},
+            {"Balance:","Balance:"},
         }
         },
 
@@ -140,6 +142,7 @@ public static class Dependencies
             Languages.Spanish,
             new Dictionary<string, string>
         {
+            {"Balance:","Equilibrio:"},
             {"Cancel","Cancelar"},
             {"Back", "atrás" },
             {"Dear", "Querido" },
@@ -242,6 +245,7 @@ public static class Dependencies
             Languages.Mexico,
             new Dictionary<string, string>
         {
+            {"Balance:","Equilibrio:"},
             {"Cancel","Cancelar"},
             {"Back", "atrás" },
             {"Dear", "Querido" },
@@ -344,6 +348,7 @@ public static class Dependencies
             Languages.Arabic,
             new Dictionary<string, string>
         {
+            {"Balance:","الرصيد:"},
             {"Cancel","يلغي"},
             {"Back", "عودة" },
             {"Dear", "العزيز" },
@@ -444,6 +449,7 @@ public static class Dependencies
             Languages.France,
             new Dictionary<string, string>
         {
+            {"Balance:","Équilibre:"},
             {"Cancel","Annuler"},
             {"Back", "Retour" },
             {"Dear", "Cher" },
@@ -544,6 +550,7 @@ public static class Dependencies
             Languages.Russian,
             new Dictionary<string, string>
         {
+            {"Balance:","Остаток средств:"},
             {"Cancel","Отмена"},
             {"Back", "Назад" },
             {"Dear", "дорогой" },
@@ -644,6 +651,7 @@ public static class Dependencies
             Languages.Italic,
             new Dictionary<string, string>
         {
+            {"Balance:","Equilibrio:"},
             {"Cancel","Annulla"},
             {"Back", "Indietro" },
             {"Dear", "Caro" },
@@ -744,6 +752,7 @@ public static class Dependencies
             Languages.SouthKorean,
             new Dictionary<string, string>
         {
+            {"Balance:","균형:"},
             {"Cancel","취소"},
             {"Back", "뒤" },
             {"Dear", "~에게" },
@@ -844,6 +853,7 @@ public static class Dependencies
             Languages.NorthKorean,
             new Dictionary<string, string>
         {
+            {"Balance:","균형:"},
             {"Cancel","취소"},
             {"Back", "뒤" },
             {"Dear", "~에게" },
@@ -944,6 +954,7 @@ public static class Dependencies
             Languages.Turkish,
             new Dictionary<string, string>
         {
+            {"Balance:","Denge:"},
             {"Cancel","İptal etmek"},
             {"Back", "Geri" },
             {"Dear", "Sayın" },
@@ -1044,6 +1055,7 @@ public static class Dependencies
             Languages.India,
             new Dictionary<string, string>
         {
+            {"Balance:","संतुलन:"},
             {"Cancel","रद्द करें"},
             {"Back", "पीछे" },
             {"Dear", "प्रिय" },
@@ -1144,6 +1156,7 @@ public static class Dependencies
             Languages.Indonesia,
             new Dictionary<string, string>
         {
+            {"Balance:","Keseimbangan:"},
             {"Cancel","Membatalkan"},
             {"Back", "Kembali" },
             {"Dear", "terhormat" },
@@ -1244,6 +1257,7 @@ public static class Dependencies
             Languages.Pakistan,
             new Dictionary<string, string>
         {
+            {"Balance:","بیلانس:"},
             {"Cancel","منسوخ کریں۔"},
             {"Back", "پیچھے" },
             {"Dear", "پیارے" },
@@ -1344,6 +1358,7 @@ public static class Dependencies
             Languages.Germany,
             new Dictionary<string, string>
         {
+            {"Balance:","Balance:"},
             {"Cancel","Abbrechen"},
             {"Back", "Zurück" },
             {"Dear", "Liebling" },
@@ -1443,6 +1458,7 @@ public static class Dependencies
             Languages.Egypt,
             new Dictionary<string, string>
         {
+            {"Balance:","الرصيد:"},
             {"Cancel","يلغي"},
             {"Back", "عودة" },
             {"Dear", "العزيز" },
@@ -1543,6 +1559,7 @@ public static class Dependencies
             Languages.Portuguese,
             new Dictionary<string, string>
         {
+            {"Balance:","Equilíbrio:"},
             {"Cancel","Cancelar"},
             {"Back", "Costas" },
             {"Dear", "Querida" },
@@ -1643,6 +1660,7 @@ public static class Dependencies
             Languages.Nigeria,
             new Dictionary<string, string>
         {
+            {"Balance:","Balance:"},
             {"Cancel","Cancel"},
             {"Back", "Back" },
             {"Dear", "Dear" },
@@ -1743,6 +1761,7 @@ public static class Dependencies
             Languages.Vietnamese,
             new Dictionary<string, string>
         {
+            {"Balance:","Sự cân bằng:"},
             {"Cancel","Hủy bỏ"},
             {"Back", "Trở lại" },
             {"Dear", "kính thưa" },
@@ -1843,6 +1862,7 @@ public static class Dependencies
             Languages.Filipino,
             new Dictionary<string, string>
         {
+            {"Balance:","Balanse:"},
             {"Cancel","Kanselahin"},
             {"Back", "Bumalik" },
             {"Dear", "mahal" },
@@ -1943,6 +1963,7 @@ public static class Dependencies
             Languages.Argentina,
             new Dictionary<string, string>
         {
+            {"Balance:","Balanse:"},
             {"Cancel","Cancelar"},
             {"Back", "atrás" },
             {"Dear", "Querido" },
@@ -2045,6 +2066,7 @@ public static class Dependencies
             Languages.Swiss,
             new Dictionary<string, string>
         {
+            {"Balance:","Balans:"},
             {"Cancel","Abbrechen"},
             {"Back", "Zurück" },
             {"Dear", "Liebling" },

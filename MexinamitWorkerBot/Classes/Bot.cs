@@ -2125,7 +2125,7 @@ public class Bot : BackgroundService
                         await bot.SendTextMessageAsync(e.Chat.Id, $"{LangDictionary[userLang]["Dear"]} {e.Chat.Id}\n{LangDictionary[userLang]["We Cant Get Your Info Right Now!"]}\n{LangDictionary[userLang]["Please Try Again Latter"]}", cancellationToken: ct);
                     else
                     {
-                        var data = $"Balance: {getInfo.data.balance}$ \nAccount Number:` {getInfo.data.wallet_number} `".EscapeUnSupportChars();
+                        var data = $"Balance: {getInfo.data.balance}$ \n{LangDictionary[userLang]["Account Number:"]}` {getInfo.data.wallet_number} `".EscapeUnSupportChars();
                         await bot.SendTextMessageAsync(e.Chat.Id, data, ParseMode.MarkdownV2, cancellationToken: ct);
                     }
                     break;
